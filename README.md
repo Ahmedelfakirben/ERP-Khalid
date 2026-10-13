@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ERP Digital ALT - Khalid ERP & POS
 
-## Getting Started
+Système ERP et Point de Vente (TPV / POS) complet avec gestion des stocks, trésorerie, devis, facturation, suivi fiscal et reconnaissance visuelle locale des articles.
 
-First, run the development server:
+## 🚀 Fonctionnalités Clés
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Point de Vente (POS / TPV)** :
+  - Vente rapide au comptoir, encaissements multi-modes (Espèces, Carte, Chèque, Virement).
+  - **Reconnaissance Visuelle Locale** : identification instantanée (<20ms) des produits par caméra sans aucune IA externe ni frais d'API.
+  - Scanner de codes-barres en direct.
+  - Impression thermique de tickets de caisse, reçus de retour et rapports de clôture journalière.
+  - Gestion des retours clients avec réintégration automatique en stock et remboursement trésorerie.
+- **Catalogue & Master Data** :
+  - Articles, Familles, Sous-familles.
+  - Prise de photo directe par caméra web ou import d'image avec calcul automatique de l'empreinte visuelle.
+  - Gestion des seuils d'alerte de stock.
+- **Gestion des Stocks & Entrepôts** :
+  - Multi-dépôts, mouvements d'entrées / sorties, inventaire en temps réel.
+- **Documents Commerciaux** :
+  - Bons de Commande, Bons de Livraison, Bons de Réception / Achat, Devis, Bons de Retour.
+  - Génération de documents PDF professionnels.
+- **Finance & Trésorerie** :
+  - Suivi des caisses et comptes bancaires.
+  - Mouvements de trésorerie, créances clients, dettes fournisseurs, régularisations.
+  - Mode fiscal commutable (Déclaration officielle vs gestion interne).
+
+---
+
+## 🐳 Déploiement sur Coolify (Docker)
+
+Le projet intègre un `Dockerfile` multi-stage optimisé pour Next.js (mode `standalone`) et Alpine Linux.
+
+### 1. Ajouter l'application sur Coolify
+1. Sur votre panneau Coolify, cliquez sur **+ New Resource** > **Public Repository**.
+2. Renseignez l'URL du dépôt :
+   ```
+   https://github.com/Ahmedelfakirben/ERP-Khalid
+   ```
+3. Branche : `master`
+4. Build Pack : **Dockerfile**
+5. Port exposé : `3000`
+
+### 2. Variables d'environnement (Coolify)
+
+Dans l'onglet **Environment Variables** de Coolify, configurez les variables suivantes :
+
+```env
+# URL de votre instance Supabase (Ex: Coolify Kong API ou Supabase Cloud)
+NEXT_PUBLIC_SUPABASE_URL=http://api-khalid.elfakir.com
+
+# Clé anonyme (Anon Key) de Supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre_anon_key_ici
+
+# Clé publique (Publishable Key)
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=votre_anon_key_ici
+
+# Clé de rôle de service (optionnel, pour tâches admin)
+# SUPABASE_SERVICE_ROLE_KEY=votre_service_role_key
+
+# IA Locale Ollama (optionnel)
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **Astuce Coolify** : Assurez-vous de cocher l'option **"Build Variable"** pour `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY` dans Coolify afin que Next.js puisse pré-générer les routes statiques lors de l'étape de compilation Docker.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Lancer le déploiement
+Cliquez sur **Deploy** dans Coolify. Coolify va :
+1. Cloner le dépôt.
+2. Installer les dépendances (`npm ci`).
+3. Compiler le projet (`npm run build`).
+4. Créer l'image ultra-légère et lancer le conteneur sur le port `3000`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 💻 Développement Local
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Installation des dépendances
+npm install
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Copier le fichier d'exemple
+cp .env.example .env.local
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Lancer le serveur de développement
+npm run dev
+```
 
-## Deploy on Vercel
+Accédez à [http://localhost:3000](http://localhost:3000) dans votre navigateur.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🗄️ Base de Données (Supabase Postgres)
+
+Les fichiers SQL complets pour initialiser ou migrer votre base de données se trouvent dans le dossier [`supabase/`](supabase/) :
+- `supabase/01_esquema_completo.sql` : Schéma de tables, vues, triggers et fonctions RPC.
+- `supabase/add_image_signature.sql` : Colonne pour l'empreinte visuelle des articles.
