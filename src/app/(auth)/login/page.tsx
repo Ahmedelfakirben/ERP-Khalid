@@ -42,7 +42,12 @@ function LoginForm() {
     })
 
     if (error) {
-      setError("Identifiants incorrects. Veuillez réessayer.")
+      console.error("Login auth error:", error)
+      if (error.message?.includes("Invalid login credentials")) {
+        setError("Identifiants incorrects. Veuillez vérifier l'email et le mot de passe.")
+      } else {
+        setError(error.message || "Erreur de connexion au serveur d'authentification.")
+      }
       setLoading(false)
       return
     }

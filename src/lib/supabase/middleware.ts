@@ -6,8 +6,11 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:8000"
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy"
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
+  if (url.startsWith("http://api-khalid.elfakir.com")) {
+    url = url.replace("http://", "https://")
+  }
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc5MTc0NjM0MCwiZXhwIjo0OTQ3NDE5OTQwLCJyb2xlIjoiYW5vbiJ9.zTAuR28zgIjrnpt-IZDAa7i0G-tdgIspqwyAUHqBduY"
 
   const supabase = createServerClient(
     url,

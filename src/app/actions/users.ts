@@ -4,14 +4,14 @@ import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 
 function getAdminAuthClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
+  if (supabaseUrl.startsWith("http://api-khalid.elfakir.com")) {
+    supabaseUrl = supabaseUrl.replace("http://", "https://")
+  }
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    return null
-  }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc5MTc0NjM0MCwiZXhwIjo0OTQ3NDE5OTQwLCJyb2xlIjoiYW5vbiJ9.zTAuR28zgIjrnpt-IZDAa7i0G-tdgIspqwyAUHqBduY"
 
   return createClient(supabaseUrl, supabaseKey, {
     auth: {
