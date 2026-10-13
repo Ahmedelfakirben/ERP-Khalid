@@ -30,7 +30,6 @@ export default function BonLivraisonsPage() {
     const { data: bls, isLoading } = useBonLivraisonList()
     const deleteBL = useDeleteBonLivraison()
     const updateStatut = useUpdateBonLivraisonStatut()
-    const toggleTVA = useToggleBonLivraisonTVA()
     const { exportToExcel, isExporting } = useExportToExcel()
 
     const handleExport = (filteredRows: any[]) => {
@@ -43,14 +42,6 @@ export default function BonLivraisonsPage() {
     const handleValider = async (id: string) => {
         try { await updateStatut.mutateAsync({ id, statut: "valide" }); toast.success("Bon de livraison validé") } catch { toast.error("Erreur lors de la validation") }
     }
-    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
-        try {
-            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
-            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
-        } catch (error: any) {
-            toast.error(error.message || "Erreur lors du changement de TVA")
-        }
-    }
 
     const columns: ColumnDef<BonLivraison>[] = [
         { accessorKey: "numero", header: "N° BL" },
@@ -59,7 +50,11 @@ export default function BonLivraisonsPage() {
             accessorFn: (row) => row.client?.raison_sociale, 
             id: "client", 
             header: "Client", 
-            cell: ({ row }) => row.original.client?.raison_sociale || "—" 
+            cell: ({ row }) => (
+                <div className="max-w-[200px] truncate font-medium text-xs text-foreground" title={row.original.client?.raison_sociale || ""}>
+                    {row.original.client?.raison_sociale || "—"}
+                </div>
+            ) 
         },
         { 
             accessorFn: (row) => (row as any).depot?.libelle, 
@@ -67,16 +62,7 @@ export default function BonLivraisonsPage() {
             header: "Dépôt", 
             cell: ({ row }) => (row.original as any).depot?.libelle || "—" 
         },
-        { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
-        {
-            id: "type",
-            header: "Tipo",
-            cell: ({ row }) => (
-                <div className="flex justify-center">
-                    {row.original.inclure_tva ? "✅" : "➖"}
-                </div>
-            ),
-        },
+        { accessorKey: "montant_ttc", header: "Montant Total", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         {
             accessorFn: (row) => statutLabels[row.statut] || row.statut,
             id: "statut", 
@@ -95,10 +81,6 @@ export default function BonLivraisonsPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href={`/bon-livraisons/${bl.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleTVA(bl.id, !!bl.inclure_tva)}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    {bl.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
-                                </DropdownMenuItem>
                                 {bl.statut === "brouillon" && (
                                     <><DropdownMenuSeparator /><DropdownMenuItem onClick={() => handleValider(bl.id)}><CheckCircle className="mr-2 h-4 w-4 text-green-600" />Valider</DropdownMenuItem></>
                                 )}

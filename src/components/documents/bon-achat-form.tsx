@@ -86,14 +86,6 @@ export function BonAchatForm({ defaultValues, onSubmit, isLoading }: BonAchatFor
                                 <FormMessage />
                             </FormItem>
                         )} />
-                        <FormField control={form.control} name="inclure_tva" render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <FormLabel>Inclure TVA</FormLabel>
-                                <FormControl>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                </FormControl>
-                            </FormItem>
-                        )} />
                     </CardContent>
                 </Card>
 
@@ -112,7 +104,6 @@ export function BonAchatForm({ defaultValues, onSubmit, isLoading }: BonAchatFor
                             watch={form.watch}
                             setValue={form.setValue}
                             articles={articles || []}
-                            inclureTva={form.watch("inclure_tva")}
                             docType="bon_achat"
                         />
                         {form.formState.errors.lignes && <p className="text-sm text-destructive mt-2">{form.formState.errors.lignes.message || "Vérifiez les lignes"}</p>}

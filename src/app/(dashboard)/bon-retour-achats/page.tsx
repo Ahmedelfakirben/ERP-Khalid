@@ -21,7 +21,6 @@ export default function BonRetourAchatsPage() {
     const { data: bras, isLoading } = useBonRetourAchatList()
     const deleteBRA = useDeleteBonRetourAchat()
     const updateStatut = useUpdateBonRetourAchatStatut()
-    const toggleTVA = useToggleBonRetourAchatTVA()
     const { exportToExcel, isExporting } = useExportToExcel()
 
     const handleExport = (filteredRows: any[]) => {
@@ -29,30 +28,13 @@ export default function BonRetourAchatsPage() {
     }
 
     const handleDelete = async (id: string) => { try { await deleteBRA.mutateAsync(id); toast.success("Bon de retour achat supprimé") } catch { toast.error("Erreur lors de la suppression") } }
-    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
-        try {
-            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
-            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
-        } catch (error: any) {
-            toast.error(error.message || "Erreur lors du changement de TVA")
-        }
-    }
 
     const columns: ColumnDef<BonRetourAchat>[] = [
         { accessorKey: "numero", header: "N° BRA" },
         { accessorKey: "date", header: "Date", cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR") },
         { accessorKey: "fournisseur", header: "Fournisseur", cell: ({ row }) => row.original.fournisseur?.raison_sociale || "—" },
         { accessorKey: "motif", header: "Motif", cell: ({ row }) => row.original.motif || "—" },
-        { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
-        {
-            id: "type",
-            header: "Tipo",
-            cell: ({ row }) => (
-                <div className="flex justify-center">
-                    {row.original.inclure_tva ? "✅" : "➖"}
-                </div>
-            ),
-        },
+        { accessorKey: "montant_ttc", header: "Montant Total", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         { accessorKey: "statut", header: "Statut", cell: ({ row }) => <Badge variant={statutColors[row.original.statut] || "secondary"}>{statutLabels[row.original.statut] || row.original.statut}</Badge> },
         {
             id: "actions",
@@ -66,10 +48,6 @@ export default function BonRetourAchatsPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild><Link href={`/bon-retour-achats/${bra.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href={`/bon-retour-achats/${bra.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleTVA(bra.id, !!bra.inclure_tva)}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    {bra.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
-                                </DropdownMenuItem>
                                 {bra.statut === "brouillon" && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => updateStatut.mutateAsync({ id: bra.id, statut: "valide" }).then(() => toast.success("BRA validé")).catch(() => toast.error("Erreur"))}><CheckCircle className="mr-2 h-4 w-4 text-green-600" />Valider</DropdownMenuItem></>)}
                                 <DropdownMenuSeparator />
                                 <AlertDialog>

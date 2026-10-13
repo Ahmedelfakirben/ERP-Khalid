@@ -1,0 +1,482 @@
+"use client"
+
+import { useState, useRef, useEffect, useCallback } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Camera,
+  RefreshCw,
+  AlertCircle,
+  Upload,
+  SwitchCamera,
+  Package,
+  ExternalLink,
+  CheckCircle2,
+  ChevronRight,
+  Eye,
+} from "lucide-react"
+import { toast } from "sonner"
+import type { Article } from "@/types/database"
+
+interface CameraProductScannerProps {
+  isOpen: boolean
+  onClose: () => void
+  onProductDetected: (article: Article) => void
+}
+
+interface ScanResult {
+  matched: boolean
+  match: Article | null
+  confidence: number
+  detected_name?: string
+  reasoning?: string
+  candidates?: Article[]
+}
+
+export function CameraProductScanner({
+  isOpen,
+  onClose,
+  onProductDetected,
+}: CameraProductScannerProps) {
+  const [hasCamera, setHasCamera] = useState<boolean>(true)
+  const [cameraLoading, setCameraLoading] = useState<boolean>(false)
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
+  const [stream, setStream] = useState<MediaStream | null>(null)
+
+  const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false)
+  const [result, setResult] = useState<ScanResult | null>(null)
+
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Start / Stop Camera stream
+  const startCamera = useCallback(async () => {
+    try {
+      setCameraLoading(true)
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop())
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setHasCamera(false)
+        return
+      }
+
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      })
+
+      setStream(newStream)
+      setHasCamera(true)
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream
+        await videoRef.current.play().catch(() => {})
+      }
+    } catch (err: any) {
+      console.warn("Could not start camera:", err)
+      setHasCamera(false)
+    } finally {
+      setCameraLoading(false)
+    }
+  }, [facingMode, stream])
+
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop())
+      setStream(null)
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }, [stream])
+
+  // Lifecycle when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setCapturedImage(null)
+      setResult(null)
+      startCamera()
+    } else {
+      stopCamera()
+    }
+    return () => {
+      stopCamera()
+    }
+  }, [isOpen])
+
+  // Toggle Front / Back camera
+  const toggleCamera = () => {
+    const nextMode = facingMode === "environment" ? "user" : "environment"
+    setFacingMode(nextMode)
+    stopCamera()
+    setTimeout(() => {
+      startCamera()
+    }, 100)
+  }
+
+  // Capture from live video stream
+  const capturePhoto = () => {
+    if (!videoRef.current) return
+
+    const video = videoRef.current
+    const canvas = document.createElement("canvas")
+    const maxDim = 800
+    let width = video.videoWidth || 640
+    let height = video.videoHeight || 480
+
+    if (width > maxDim || height > maxDim) {
+      if (width > height) {
+        height = Math.round((height * maxDim) / width)
+        width = maxDim
+      } else {
+        width = Math.round((width * maxDim) / height)
+        height = maxDim
+      }
+    }
+
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    ctx.drawImage(video, 0, 0, width, height)
+    const base64 = canvas.toDataURL("image/jpeg", 0.85)
+
+    if (typeof window !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate([40])
+    }
+
+    stopCamera()
+    setCapturedImage(base64)
+    analyzeImage(base64)
+  }
+
+  // File Upload fallback
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string
+      stopCamera()
+      setCapturedImage(base64)
+      analyzeImage(base64)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  // Call Local Visual Matching API (Deterministic, zero external AI)
+  const analyzeImage = async (imageBase64: string) => {
+    setIsAnalyzing(true)
+    setResult(null)
+
+    try {
+      const res = await fetch("/api/pos/identify-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageBase64,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors de l'analyse de l'image")
+      }
+
+      setResult(data)
+
+      if (data.matched && data.match) {
+        toast.success(`🎯 Identifié : ${data.match.designation} (${data.confidence}%)`)
+      } else if (data.candidates && data.candidates.length > 0) {
+        toast.info("Articles similaires trouvés dans le catalogue")
+      } else {
+        toast.info("Aucun article correspondant dans l'inventaire")
+      }
+    } catch (err: any) {
+      console.error("Analysis error:", err)
+      toast.error(err.message || "Erreur lors de la reconnaissance de l'article")
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleRetake = () => {
+    setCapturedImage(null)
+    setResult(null)
+    startCamera()
+  }
+
+  const handleSelectProduct = (article: Article) => {
+    onProductDetected(article)
+    onClose()
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md sm:max-w-lg p-0 overflow-hidden rounded-3xl border-border/80 shadow-2xl">
+        <DialogHeader className="p-4 sm:p-5 border-b bg-muted/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                <Camera className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="font-black text-base sm:text-lg tracking-tight">
+                  Reconnaissance Visuelle Produit
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Prenez en photo un produit pour l&apos;ajouter au ticket
+                </DialogDescription>
+              </div>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Main View Area */}
+        <div className="p-4 sm:p-5 space-y-4">
+          {!capturedImage ? (
+            <div className="space-y-4">
+              <div className="relative aspect-4/3 w-full rounded-2xl overflow-hidden bg-black flex items-center justify-center border shadow-inner">
+                {hasCamera ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      playsInline
+                      muted
+                      autoPlay
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Viewfinder Target Overlays */}
+                    <div className="absolute inset-6 pointer-events-none border-2 border-dashed border-white/50 rounded-2xl flex flex-col items-center justify-between p-3">
+                      <div className="w-full flex justify-between">
+                        <div className="w-4 h-4 border-t-2 border-l-2 border-primary" />
+                        <div className="w-4 h-4 border-t-2 border-r-2 border-primary" />
+                      </div>
+                      <Badge variant="secondary" className="bg-black/60 text-white backdrop-blur-md text-[11px] font-medium border-none shadow-sm">
+                        Cadrez le produit ou son emballage
+                      </Badge>
+                      <div className="w-full flex justify-between">
+                        <div className="w-4 h-4 border-b-2 border-l-2 border-primary" />
+                        <div className="w-4 h-4 border-b-2 border-r-2 border-primary" />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      onClick={toggleCamera}
+                      className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/80 backdrop-blur-xs border border-white/20"
+                      title="Changer de caméra"
+                    >
+                      <SwitchCamera className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                    <Camera className="h-10 w-10 mb-2 opacity-40 text-white" />
+                    <p className="font-semibold text-sm text-white">Caméra non disponible</p>
+                    <p className="text-xs text-white/70 mt-1 max-w-xs">
+                      Autorisez l&apos;accès à votre caméra ou importez une photo depuis votre appareil.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 h-12 rounded-xl text-xs font-semibold gap-1.5 cursor-pointer"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Importer Image</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={!hasCamera || cameraLoading}
+                  onClick={capturePhoto}
+                  className="flex-2 h-12 rounded-xl text-sm font-black gap-2 shadow-lg shadow-primary/25 cursor-pointer"
+                >
+                  <Camera className="h-5 w-5" />
+                  <span>Prendre la Photo</span>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative aspect-16/9 w-full rounded-2xl overflow-hidden bg-black flex items-center justify-center border shadow-xs">
+                <img
+                  src={capturedImage}
+                  alt="Capture produit"
+                  className="w-full h-full object-cover"
+                />
+
+                {isAnalyzing && (
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-center text-white gap-2.5 animate-in fade-in">
+                    <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                    <p className="font-black text-sm tracking-tight">Recherche visuelle en cours...</p>
+                    <p className="text-xs text-white/70">Comparaison géométrique et colorimétrique instantanée</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Results Display */}
+              {!isAnalyzing && result && (
+                <div className="space-y-3 animate-in fade-in duration-200">
+                  {result.matched && result.match ? (
+                    <div className="p-3.5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-500/5 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
+                            <CheckCircle2 className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-sm text-foreground">
+                                {result.match.designation}
+                              </span>
+                              <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/40 text-emerald-600 bg-emerald-500/10">
+                                {result.confidence}% similitude
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Réf: {result.match.code} • Prix : <strong className="text-foreground">{Number(result.match.prix_vente).toFixed(2)} MAD</strong>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {result.reasoning && (
+                        <p className="text-[11px] text-muted-foreground bg-background/60 p-2 rounded-lg border border-border/40 leading-relaxed">
+                          💡 <span className="font-medium text-foreground">Résultat :</span> {result.reasoning}
+                        </p>
+                      )}
+
+                      <Button
+                        size="lg"
+                        onClick={() => handleSelectProduct(result.match!)}
+                        className="w-full h-11 rounded-xl text-xs font-black gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Ajouter au Ticket ({Number(result.match.prix_vente).toFixed(2)} MAD)</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 text-center space-y-3">
+                      <AlertCircle className="h-8 w-8 mx-auto text-amber-600 opacity-80" />
+                      <div>
+                        <p className="font-bold text-sm text-foreground">
+                          {result.detected_name ? `Meilleure ressemblance : "${result.detected_name}" (${result.confidence}%)` : "Produit non reconnu"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Aucune correspondance exacte trouvée dans le catalogue d&apos;articles.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          if (capturedImage) {
+                            try {
+                              sessionStorage.setItem("ai_product_prefill_image", capturedImage)
+                            } catch {}
+                          }
+                          window.open("/articles/nouveau", "_blank")
+                        }}
+                        className="w-full h-10 rounded-xl text-xs font-bold gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md cursor-pointer"
+                      >
+                        <Package className="h-4 w-4" />
+                        <span>Créer un nouvel article avec cette photo</span>
+                        <ExternalLink className="h-3.5 w-3.5 ml-auto opacity-70" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Alternative Candidates */}
+                  {result.candidates && result.candidates.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Articles les plus proches visuellement
+                      </span>
+                      <div className="space-y-1.5">
+                        {result.candidates.map((cand: any) => (
+                          <div
+                            key={cand.id}
+                            onClick={() => handleSelectProduct(cand)}
+                            className="p-2.5 rounded-xl border bg-card hover:bg-muted/40 transition-colors flex items-center justify-between cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-2">
+                              {cand.image_url ? (
+                                <img
+                                  src={cand.image_url}
+                                  alt={cand.designation}
+                                  className="h-9 w-9 rounded-lg object-cover border"
+                                />
+                              ) : (
+                                <Package className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                              )}
+                              <div>
+                                <p className="font-bold text-xs text-foreground group-hover:text-primary">
+                                  {cand.designation}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {cand.code} • {Number(cand.prix_vente).toFixed(2)} MAD
+                                  {cand.similarity_percentage && ` • ${cand.similarity_percentage}% semblable`}
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Retake Button */}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      onClick={handleRetake}
+                      className="w-full h-10 rounded-xl text-xs font-semibold gap-1.5 cursor-pointer"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>Scanner un autre article</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

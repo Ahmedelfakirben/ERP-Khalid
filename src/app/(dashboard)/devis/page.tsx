@@ -39,7 +39,6 @@ export default function DevisListPage() {
     const { data: devisList, isLoading } = useDevisList()
     const deleteDevis = useDeleteDevis()
     const updateStatut = useUpdateDevisStatut()
-    const toggleTVA = useToggleDevisTVA()
     const { exportToExcel, isExporting } = useExportToExcel()
 
     const handleExport = (filteredRows: any[]) => {
@@ -65,40 +64,34 @@ export default function DevisListPage() {
         }
     }
 
-    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
-        try {
-            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
-            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
-        } catch (error: any) {
-            toast.error(error.message || "Erreur lors du changement de TVA")
-        }
-    }
-
     const columns: ColumnDef<Devis>[] = [
-        { accessorKey: "numero", header: "N° Devis" },
+        {
+            accessorKey: "numero",
+            header: "Numéro",
+            cell: ({ row }) => (
+                <Link href={`/devis/${row.original.id}`} className="font-medium hover:underline text-primary">
+                    {row.original.numero}
+                </Link>
+            ),
+        },
         {
             accessorKey: "date",
             header: "Date",
             cell: ({ row }) => new Date(row.original.date).toLocaleDateString("fr-FR"),
         },
         {
-            accessorKey: "client",
+            id: "client",
             header: "Client",
-            cell: ({ row }) => row.original.client?.raison_sociale || "—",
+            cell: ({ row }) => (
+                <div className="max-w-[200px] truncate font-medium text-xs text-foreground" title={row.original.client?.raison_sociale || ""}>
+                    {row.original.client?.raison_sociale || "—"}
+                </div>
+            ),
         },
         {
             accessorKey: "montant_ttc",
-            header: "Montant TTC",
+            header: "Montant Total",
             cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD`,
-        },
-        {
-            id: "type",
-            header: "Tipo",
-            cell: ({ row }) => (
-                <div className="flex justify-center">
-                    {row.original.inclure_tva ? "✅" : "➖"}
-                </div>
-            ),
         },
         {
             accessorKey: "statut",
@@ -123,10 +116,6 @@ export default function DevisListPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild><Link href={`/devis/${devis.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href={`/devis/${devis.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleTVA(devis.id, !!devis.inclure_tva)}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    {devis.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 {devis.statut === "brouillon" && (
                                     <DropdownMenuItem onClick={() => handleStatut(devis.id, "envoye")}>

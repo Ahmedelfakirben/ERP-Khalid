@@ -68,7 +68,7 @@ export function MouvementHistoryDialog({
             case "bon_achat": return `/bon-achats/${id}`
             case "bon_retour": return `/bon-retours/${id}`
             case "bon_retour_achat": return `/bon-retour-achats/${id}`
-            case "vente_pos": return `/pos/ventes/${id}`
+            case "vente_pos": return `/historique-pos/${id}`
             case "devis": return `/devis/${id}`
             default: return null
         }

@@ -1,4 +1,4 @@
-﻿--- ==========================================================================
+--- ==========================================================================
 --- MIGRATION: 00001_create_schema.sql
 --- ==========================================================================
 -- ============================================================
@@ -8,10 +8,10 @@
 -- Activer l'extension UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Type ENUM pour les rÃ´les
+-- Type ENUM pour les rôles
 CREATE TYPE user_role AS ENUM ('admin', 'gerant', 'commercial', 'magasinier');
 CREATE TYPE tresorerie_type AS ENUM ('caisse', 'banque');
-CREATE TYPE mode_paiement AS ENUM ('especes', 'carte', 'cheque', 'virement');
+CREATE TYPE mode_paiement AS ENUM ('especes', 'carte', 'cheque', 'virement', 'effet');
 CREATE TYPE mouvement_type AS ENUM ('entree', 'sortie');
 CREATE TYPE devis_statut AS ENUM ('brouillon', 'envoye', 'accepte', 'refuse', 'expire');
 CREATE TYPE document_statut AS ENUM ('brouillon', 'valide', 'annule');
@@ -32,7 +32,7 @@ CREATE TABLE profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Trigger pour crÃ©er un profil automatiquement
+-- Trigger pour créer un profil automatiquement
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -101,20 +101,23 @@ CREATE TABLE familles_articles (
 CREATE TABLE articles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(30) NOT NULL UNIQUE,
+  reference VARCHAR(100),
+  code_barre VARCHAR(100),
   designation VARCHAR(255) NOT NULL,
   famille_id UUID REFERENCES familles_articles(id) ON DELETE SET NULL,
   prix_achat DECIMAL(12,2) NOT NULL DEFAULT 0,
   prix_vente DECIMAL(12,2) NOT NULL DEFAULT 0,
   tva DECIMAL(5,2) NOT NULL DEFAULT 20,
-  unite VARCHAR(20) NOT NULL DEFAULT 'UnitÃ©',
+  unite VARCHAR(20) NOT NULL DEFAULT 'Unité',
   seuil_alerte INTEGER NOT NULL DEFAULT 10,
   actif BOOLEAN NOT NULL DEFAULT true,
+  image_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ============================================================
--- DÃ‰PÃ”TS DE STOCKAGE
+-- DÉPÔTS DE STOCKAGE
 -- ============================================================
 CREATE TABLE depots (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -137,7 +140,7 @@ CREATE TABLE stock (
 );
 
 -- ============================================================
--- SALARIÃ‰S
+-- SALARIÉS
 -- ============================================================
 CREATE TABLE salaries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -154,7 +157,7 @@ CREATE TABLE salaries (
 );
 
 -- ============================================================
--- TRÃ‰SORERIES
+-- TRÉSORERIES
 -- ============================================================
 CREATE TABLE tresoreries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -166,7 +169,7 @@ CREATE TABLE tresoreries (
 );
 
 -- ============================================================
--- SÃ‰QUENCES (auto-numÃ©rotation)
+-- SÉQUENCES (auto-numérotation)
 -- ============================================================
 CREATE TABLE sequences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -185,7 +188,7 @@ INSERT INTO sequences (type, prefixe) VALUES
   ('bon_retour_achat', 'BRA'),
   ('vente_pos', 'POS');
 
--- Fonction pour gÃ©nÃ©rer le prochain numÃ©ro
+-- Fonction pour générer le prochain numéro
 CREATE OR REPLACE FUNCTION next_numero(p_type VARCHAR)
 RETURNS VARCHAR AS $$
 DECLARE
@@ -395,6 +398,8 @@ CREATE TABLE ventes_pos (
   montant_ht DECIMAL(14,2) NOT NULL DEFAULT 0,
   montant_tva DECIMAL(14,2) NOT NULL DEFAULT 0,
   montant_ttc DECIMAL(14,2) NOT NULL DEFAULT 0,
+  remise DECIMAL(14,2) NOT NULL DEFAULT 0,
+  inclure_tva BOOLEAN NOT NULL DEFAULT false,
   mode_paiement mode_paiement NOT NULL DEFAULT 'especes',
   depot_id UUID NOT NULL REFERENCES depots(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -426,7 +431,7 @@ CREATE TABLE mouvements_stock (
 );
 
 -- ============================================================
--- MOUVEMENTS DE TRÃ‰SORERIE
+-- MOUVEMENTS DE TRÉSORERIE
 -- ============================================================
 CREATE TABLE mouvements_tresorerie (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -440,10 +445,10 @@ CREATE TABLE mouvements_tresorerie (
 );
 
 -- ============================================================
--- TRIGGERS POUR MISE Ã€ JOUR AUTOMATIQUE DU STOCK
+-- TRIGGERS POUR MISE À JOUR AUTOMATIQUE DU STOCK
 -- ============================================================
 
--- Fonction gÃ©nÃ©rique pour mettre Ã  jour le stock
+-- Fonction générique pour mettre à jour le stock
 CREATE OR REPLACE FUNCTION update_stock(
   p_article_id UUID,
   p_depot_id UUID,
@@ -468,7 +473,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger: Bon de livraison validÃ© â†’ sortie de stock
+-- Trigger: Bon de livraison validé → sortie de stock
 CREATE OR REPLACE FUNCTION on_bon_livraison_valide()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -484,7 +489,7 @@ CREATE TRIGGER trg_bon_livraison_stock
   AFTER UPDATE ON bon_livraisons
   FOR EACH ROW EXECUTE FUNCTION on_bon_livraison_valide();
 
--- Trigger: Bon de retour validÃ© â†’ entrÃ©e en stock
+-- Trigger: Bon de retour validé → entrée en stock
 CREATE OR REPLACE FUNCTION on_bon_retour_valide()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -500,7 +505,7 @@ CREATE TRIGGER trg_bon_retour_stock
   AFTER UPDATE ON bon_retours
   FOR EACH ROW EXECUTE FUNCTION on_bon_retour_valide();
 
--- Trigger: Bon d'achat validÃ© â†’ entrÃ©e en stock
+-- Trigger: Bon d'achat validé → entrée en stock
 CREATE OR REPLACE FUNCTION on_bon_achat_valide()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -516,7 +521,7 @@ CREATE TRIGGER trg_bon_achat_stock
   AFTER UPDATE ON bon_achats
   FOR EACH ROW EXECUTE FUNCTION on_bon_achat_valide();
 
--- Trigger: Bon de retour achat validÃ© â†’ sortie de stock
+-- Trigger: Bon de retour achat validé → sortie de stock
 CREATE OR REPLACE FUNCTION on_bon_retour_achat_valide()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -584,7 +589,7 @@ RETURNS user_role AS $$
   SELECT role FROM profiles WHERE user_id = auth.uid();
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- Generic policy: Admin and GÃ©rant have full access to all tables
+-- Generic policy: Admin and Gérant have full access to all tables
 -- Commercial can read most, write own documents
 -- Magasinier can access stock-related tables
 
@@ -598,7 +603,7 @@ CREATE POLICY clients_insert ON clients FOR INSERT WITH CHECK (get_user_role() I
 CREATE POLICY clients_update ON clients FOR UPDATE USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY clients_delete ON clients FOR DELETE USING (get_user_role() IN ('admin', 'gerant'));
 
--- Fournisseurs: admin, gÃ©rant full; magasinier read
+-- Fournisseurs: admin, gérant full; magasinier read
 CREATE POLICY fournisseurs_select ON fournisseurs FOR SELECT USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 CREATE POLICY fournisseurs_insert ON fournisseurs FOR INSERT WITH CHECK (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY fournisseurs_update ON fournisseurs FOR UPDATE USING (get_user_role() IN ('admin', 'gerant'));
@@ -620,19 +625,19 @@ CREATE POLICY familles_delete ON familles_articles FOR DELETE USING (get_user_ro
 CREATE POLICY depots_select ON depots FOR SELECT USING (true);
 CREATE POLICY depots_modify ON depots FOR ALL USING (get_user_role() IN ('admin', 'gerant'));
 
--- Stock: all can read, magasinier + admin + gÃ©rant can modify
+-- Stock: all can read, magasinier + admin + gérant can modify
 CREATE POLICY stock_select ON stock FOR SELECT USING (true);
 CREATE POLICY stock_modify ON stock FOR ALL USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 
--- Salaries: admin full, gÃ©rant read
+-- Salaries: admin full, gérant read
 CREATE POLICY salaries_select ON salaries FOR SELECT USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY salaries_modify ON salaries FOR ALL USING (get_user_role() = 'admin');
 
--- Tresoreries: admin + gÃ©rant only
+-- Tresoreries: admin + gérant only
 CREATE POLICY tresoreries_select ON tresoreries FOR SELECT USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY tresoreries_modify ON tresoreries FOR ALL USING (get_user_role() IN ('admin', 'gerant'));
 
--- Devis: admin/gÃ©rant full, commercial own
+-- Devis: admin/gérant full, commercial own
 CREATE POLICY devis_select ON devis FOR SELECT USING (
   get_user_role() IN ('admin', 'gerant')
   OR (get_user_role() = 'commercial' AND commercial_id = (SELECT id FROM profiles WHERE user_id = auth.uid()))
@@ -648,7 +653,7 @@ CREATE POLICY devis_delete ON devis FOR DELETE USING (get_user_role() IN ('admin
 CREATE POLICY devis_lignes_select ON devis_lignes FOR SELECT USING (true);
 CREATE POLICY devis_lignes_modify ON devis_lignes FOR ALL USING (get_user_role() IN ('admin', 'gerant', 'commercial'));
 
--- Bon livraisons: admin/gÃ©rant/magasinier, commercial read
+-- Bon livraisons: admin/gérant/magasinier, commercial read
 CREATE POLICY bl_select ON bon_livraisons FOR SELECT USING (get_user_role() != 'magasinier' OR get_user_role() = 'magasinier');
 CREATE POLICY bl_modify ON bon_livraisons FOR ALL USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 CREATE POLICY bll_select ON bon_livraison_lignes FOR SELECT USING (true);
@@ -660,13 +665,13 @@ CREATE POLICY br_modify ON bon_retours FOR ALL USING (get_user_role() IN ('admin
 CREATE POLICY brl_select ON bon_retour_lignes FOR SELECT USING (true);
 CREATE POLICY brl_modify ON bon_retour_lignes FOR ALL USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 
--- Bon commandes: admin/gÃ©rant
+-- Bon commandes: admin/gérant
 CREATE POLICY bc_select ON bon_commandes FOR SELECT USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY bc_modify ON bon_commandes FOR ALL USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY bcl_select ON bon_commande_lignes FOR SELECT USING (get_user_role() IN ('admin', 'gerant'));
 CREATE POLICY bcl_modify ON bon_commande_lignes FOR ALL USING (get_user_role() IN ('admin', 'gerant'));
 
--- Bon achats: admin/gÃ©rant + magasinier
+-- Bon achats: admin/gérant + magasinier
 CREATE POLICY ba_select ON bon_achats FOR SELECT USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 CREATE POLICY ba_modify ON bon_achats FOR ALL USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
 CREATE POLICY bal_select ON bon_achat_lignes FOR SELECT USING (get_user_role() IN ('admin', 'gerant', 'magasinier'));
@@ -713,17 +718,15 @@ CREATE INDEX idx_mvt_stock_depot ON mouvements_stock(depot_id);
 CREATE INDEX idx_mvt_treso ON mouvements_tresorerie(tresorerie_id);
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00002_tresorerie_integration.sql
 --- ==========================================================================
 -- ============================================================
--- Migration: IntÃ©gration TrÃ©sorerie sur tous les documents
+-- Migration: Intégration Trésorerie sur tous les documents
 -- ============================================================
 
 -- 1. Ajouter tresorerie_id et mode_paiement aux tables de documents
--- (optionnels pour rÃ©trocompatibilitÃ© avec les documents existants)
+-- (optionnels pour rétrocompatibilité avec les documents existants)
 
 ALTER TABLE bon_livraisons
   ADD COLUMN IF NOT EXISTS tresorerie_id UUID REFERENCES tresoreries(id),
@@ -742,16 +745,16 @@ ALTER TABLE bon_retour_achats
   ADD COLUMN IF NOT EXISTS mode_paiement mode_paiement;
 
 -- ============================================================
--- 2. Trigger: Bon de livraison validÃ© â†’ entrÃ©e de trÃ©sorerie
+-- 2. Trigger: Bon de livraison validé → entrée de trésorerie
 -- ============================================================
 CREATE OR REPLACE FUNCTION trg_bon_livraison_tresorerie()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.statut = 'valide' AND (OLD.statut IS DISTINCT FROM 'valide') AND NEW.tresorerie_id IS NOT NULL THEN
-    -- CrÃ©er mouvement d'entrÃ©e
+    -- Créer mouvement d'entrée
     INSERT INTO mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id)
     VALUES (NEW.tresorerie_id, 'entree', NEW.montant_ttc, 'Bon de livraison ' || NEW.numero, 'bon_livraison', NEW.id);
-    -- Mettre Ã  jour le solde
+    -- Mettre à jour le solde
     UPDATE tresoreries SET solde = solde + NEW.montant_ttc WHERE id = NEW.tresorerie_id;
   END IF;
   RETURN NEW;
@@ -764,7 +767,7 @@ CREATE TRIGGER trg_bl_tresorerie
   FOR EACH ROW EXECUTE FUNCTION trg_bon_livraison_tresorerie();
 
 -- ============================================================
--- 3. Trigger: Bon de retour validÃ© â†’ sortie de trÃ©sorerie
+-- 3. Trigger: Bon de retour validé → sortie de trésorerie
 -- ============================================================
 CREATE OR REPLACE FUNCTION trg_bon_retour_tresorerie()
 RETURNS TRIGGER AS $$
@@ -784,7 +787,7 @@ CREATE TRIGGER trg_br_tresorerie
   FOR EACH ROW EXECUTE FUNCTION trg_bon_retour_tresorerie();
 
 -- ============================================================
--- 4. Trigger: Bon d'achat validÃ© â†’ sortie de trÃ©sorerie
+-- 4. Trigger: Bon d'achat validé → sortie de trésorerie
 -- ============================================================
 CREATE OR REPLACE FUNCTION trg_bon_achat_tresorerie()
 RETURNS TRIGGER AS $$
@@ -804,7 +807,7 @@ CREATE TRIGGER trg_ba_tresorerie
   FOR EACH ROW EXECUTE FUNCTION trg_bon_achat_tresorerie();
 
 -- ============================================================
--- 5. Trigger: Bon de retour achat validÃ© â†’ entrÃ©e de trÃ©sorerie
+-- 5. Trigger: Bon de retour achat validé → entrée de trésorerie
 -- ============================================================
 CREATE OR REPLACE FUNCTION trg_bon_retour_achat_tresorerie()
 RETURNS TRIGGER AS $$
@@ -822,8 +825,6 @@ DROP TRIGGER IF EXISTS trg_bra_tresorerie ON bon_retour_achats;
 CREATE TRIGGER trg_bra_tresorerie
   AFTER UPDATE ON bon_retour_achats
   FOR EACH ROW EXECUTE FUNCTION trg_bon_retour_achat_tresorerie();
-
-
 
 
 --- ==========================================================================
@@ -847,7 +848,7 @@ BEGIN
 
   -- Allow re-accepting if BL doesn't exist (idempotency fix for partial failures)
   IF v_devis.statut = 'accepte' AND EXISTS (SELECT 1 FROM bon_livraisons WHERE devis_id = p_devis_id) THEN
-    RAISE EXCEPTION 'Ce devis a dÃ©jÃ  Ã©tÃ© acceptÃ© et un BL existe dÃ©jÃ .';
+    RAISE EXCEPTION 'Ce devis a déjà été accepté et un BL existe déjà.';
   END IF;
 
   -- 2. Update status
@@ -863,7 +864,7 @@ BEGIN
   ) VALUES (
     v_numero, CURRENT_DATE, v_devis.client_id, p_devis_id, p_depot_id, 'brouillon',
     v_devis.montant_ht, v_devis.montant_tva, v_devis.montant_ttc,
-    'CrÃ©Ã© automatiquement depuis devis ' || v_devis.numero
+    'Créé automatiquement depuis devis ' || v_devis.numero
   ) RETURNING id INTO v_bl_id;
 
   -- 5. Copy lines
@@ -894,7 +895,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Bon de commande introuvable'; END IF;
 
   IF v_bc.statut = 'valide' AND EXISTS (SELECT 1 FROM bon_achats WHERE bon_commande_id = p_bc_id) THEN
-    RAISE EXCEPTION 'Ce bon de commande a dÃ©jÃ  Ã©tÃ© validÃ© et un BA existe dÃ©jÃ .';
+    RAISE EXCEPTION 'Ce bon de commande a déjà été validé et un BA existe déjà.';
   END IF;
 
   UPDATE bon_commandes SET statut = 'valide' WHERE id = p_bc_id;
@@ -907,7 +908,7 @@ BEGIN
   ) VALUES (
     v_numero, CURRENT_DATE, v_bc.fournisseur_id, p_bc_id, p_depot_id, 'brouillon',
     v_bc.montant_ht, v_bc.montant_tva, v_bc.montant_ttc,
-    'CrÃ©Ã© automatiquement depuis BC ' || v_bc.numero
+    'Créé automatiquement depuis BC ' || v_bc.numero
   ) RETURNING id INTO v_ba_id;
 
   INSERT INTO bon_achat_lignes (
@@ -925,17 +926,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00004_create_default_depot.sql
 --- ==========================================================================
 -- Create a default depot if none exists
 INSERT INTO depots (code, libelle, adresse)
-VALUES ('DEP-001', 'DÃ©pÃ´t Principal', 'SiÃ¨ge Social')
+VALUES ('DEP-001', 'Dépôt Principal', 'Siège Social')
 ON CONFLICT (code) DO NOTHING;
-
-
 
 
 --- ==========================================================================
@@ -956,11 +953,11 @@ BEGIN
   IF (NEW.statut = 'valide' AND NEW.tresorerie_id IS NOT NULL) AND
      ( (OLD.statut IS DISTINCT FROM 'valide') OR (OLD.tresorerie_id IS NULL) ) THEN
 
-    -- CrÃ©er mouvement d'entrÃ©e
+    -- Créer mouvement d'entrée
     INSERT INTO mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id)
     VALUES (NEW.tresorerie_id, 'entree', NEW.montant_ttc, 'Bon de livraison ' || NEW.numero, 'bon_livraison', NEW.id);
 
-    -- Mettre Ã  jour le solde
+    -- Mettre à jour le solde
     UPDATE tresoreries SET solde = solde + NEW.montant_ttc WHERE id = NEW.tresorerie_id;
   END IF;
   RETURN NEW;
@@ -1017,8 +1014,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
 
 
 --- ==========================================================================
@@ -1129,7 +1124,7 @@ BEGIN
 
     -- Update Treasury
     INSERT INTO mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id)
-    VALUES (NEW.tresorerie_id, v_type_mvt, NEW.montant, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id);
+    VALUES (NEW.tresorerie_id, v_type_mvt, NEW.montant, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id);
     
     IF v_type_mvt = 'entree' THEN
       UPDATE tresoreries SET solde = solde + NEW.montant WHERE id = NEW.tresorerie_id;
@@ -1189,8 +1184,6 @@ CREATE TRIGGER trg_paiements_changes
   FOR EACH ROW EXECUTE FUNCTION trg_handle_paiement();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00007_payment_rls.sql
 --- ==========================================================================
@@ -1214,8 +1207,6 @@ CREATE POLICY "Enable all access for authenticated users" ON mouvements_tresorer
     TO authenticated
     USING (true)
     WITH CHECK (true);
-
-
 
 
 --- ==========================================================================
@@ -1246,7 +1237,7 @@ BEGIN
 
     -- Update Treasury
     INSERT INTO mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id)
-    VALUES (NEW.tresorerie_id, v_type_mvt, NEW.montant, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id);
+    VALUES (NEW.tresorerie_id, v_type_mvt, NEW.montant, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id);
     
     IF v_type_mvt = 'entree' THEN
       UPDATE tresoreries SET solde = solde + NEW.montant WHERE id = NEW.tresorerie_id;
@@ -1303,8 +1294,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00009_treasury_view.sql
 --- ==========================================================================
@@ -1342,13 +1331,11 @@ GRANT SELECT ON v_mouvements_tresorerie_complets TO authenticated;
 GRANT SELECT ON v_mouvements_tresorerie_complets TO service_role;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00010_accounting_schema.sql
 --- ==========================================================================
 -- ============================================================
--- Migration: Module ComptabilitÃ© (PCGM - Maroc)
+-- Migration: Module Comptabilité (PCGM - Maroc)
 -- ============================================================
 
 -- 1. Plan Comptable
@@ -1356,7 +1343,7 @@ CREATE TABLE plan_comptable (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     compte VARCHAR(20) NOT NULL UNIQUE, -- 3421, 4411, etc.
     libelle VARCHAR(255) NOT NULL,
-    classe INTEGER NOT NULL, -- 1 Ã  8
+    classe INTEGER NOT NULL, -- 1 à 8
     parent_id UUID REFERENCES plan_comptable(id),
     actif BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -1378,11 +1365,11 @@ INSERT INTO journaux (code, libelle) VALUES
 ('VTE', 'Ventes'),
 ('BNQ', 'Banque'),
 ('CAI', 'Caisse'),
-('OD', 'OpÃ©rations Diverses'),
-('AN', 'Ã€ Nouveaux');
+('OD', 'Opérations Diverses'),
+('AN', 'À Nouveaux');
 
--- 3. Ã‰critures Comptables (Header)
--- Lien vers la piÃ¨ce source (Facture id, Paiement id)
+-- 3. Écritures Comptables (Header)
+-- Lien vers la pièce source (Facture id, Paiement id)
 CREATE TABLE ecritures_comptables (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     date DATE NOT NULL,
@@ -1396,12 +1383,12 @@ CREATE TABLE ecritures_comptables (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Lignes d'Ã‰criture (Detail)
+-- 4. Lignes d'Écriture (Detail)
 CREATE TABLE lignes_ecriture (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ecriture_id UUID NOT NULL REFERENCES ecritures_comptables(id) ON DELETE CASCADE,
     compte_id UUID NOT NULL REFERENCES plan_comptable(id),
-    libelle VARCHAR(255), -- Optionnel, hÃ©rite souvent de l'Ã©criture
+    libelle VARCHAR(255), -- Optionnel, hérite souvent de l'écriture
     debit DECIMAL(15, 2) DEFAULT 0,
     credit DECIMAL(15, 2) DEFAULT 0,
     ordre INTEGER DEFAULT 0,
@@ -1431,38 +1418,36 @@ CREATE POLICY "Full Access Lignes" ON lignes_ecriture FOR ALL TO authenticated U
 -- 5. Seed Data: Plan Comptable Marocain (Extrait Essentiel)
 -- ============================================================
 -- Classe 1: Financement Permanent
--- Classe 2: Actif ImmobilisÃ©
+-- Classe 2: Actif Immobilisé
 -- Classe 3: Actif Circulant
 -- Classe 4: Passif Circulant
--- Classe 5: TrÃ©sorerie
+-- Classe 5: Trésorerie
 -- Classe 6: Charges
 -- Classe 7: Produits
 
 INSERT INTO plan_comptable (compte, libelle, classe) VALUES
--- Classe 3 (Clients & Comptes rattachÃ©s)
+-- Classe 3 (Clients & Comptes rattachés)
 ('3421', 'Clients', 3),
 ('3425', 'Clients - Retenues de garantie', 3),
-('3455', 'Ã‰tat - TVA rÃ©cupÃ©rable', 3),
+('3455', 'État - TVA récupérable', 3),
 
--- Classe 4 (Fournisseurs & Comptes rattachÃ©s)
+-- Classe 4 (Fournisseurs & Comptes rattachés)
 ('4411', 'Fournisseurs', 4),
-('4455', 'Ã‰tat - TVA facturÃ©e', 4),
-('4456', 'Ã‰tat - TVA due', 4),
+('4455', 'État - TVA facturée', 4),
+('4456', 'État - TVA due', 4),
 
--- Classe 5 (TrÃ©sorerie)
-('5141', 'Banques (soldes dÃ©biteurs)', 5),
+-- Classe 5 (Trésorerie)
+('5141', 'Banques (soldes débiteurs)', 5),
 ('5161', 'Caisses', 5),
 
 -- Classe 6 (Charges)
 ('6111', 'Achats de marchandises', 6),
 ('6114', 'Variation des stocks de marchandises', 6),
-('6121', 'Achats de matiÃ¨res premiÃ¨res', 6),
+('6121', 'Achats de matières premières', 6),
 
 -- Classe 7 (Produits)
 ('7111', 'Ventes de marchandises', 7),
 ('7121', 'Ventes de biens et services produits', 7);
-
-
 
 
 
@@ -1512,31 +1497,31 @@ BEGIN
     v_journal_id := get_journal_id('VTE');
     v_compte_client := get_compte_id('3421'); -- Clients
     v_compte_vente := get_compte_id('7111');  -- Vente Marchandises
-    v_compte_tva := get_compte_id('4455');    -- TVA FacturÃ©e
+    v_compte_tva := get_compte_id('4455');    -- TVA Facturée
 
     -- Create Header
     INSERT INTO ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut)
-    VALUES (CURRENT_DATE, v_journal_id, 'Facture NÂ° ' || NEW.numero, 'bon_livraison', NEW.id, 'valide')
+    VALUES (CURRENT_DATE, v_journal_id, 'Facture N° ' || NEW.numero, 'bon_livraison', NEW.id, 'valide')
     RETURNING id INTO v_ecriture_id;
 
     -- USE EXACT AMOUNTS FROM DOCUMENT
     v_montant_ht := NEW.montant_ht;
     v_montant_tva := NEW.montant_tva;
 
-    -- Ligne 1: DÃ©bit Client (TTC)
+    -- Ligne 1: Débit Client (TTC)
     INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
     VALUES (v_ecriture_id, v_compte_client, NEW.montant_ttc, 0, 'Client ' || NEW.client_id); -- client_id is uuid
 
-    -- Ligne 2: CrÃ©dit Vente (HT)
+    -- Ligne 2: Crédit Vente (HT)
     IF v_montant_ht > 0 THEN
       INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
       VALUES (v_ecriture_id, v_compte_vente, 0, v_montant_ht, 'Vente Marchandises');
     END IF;
 
-    -- Ligne 3: CrÃ©dit TVA (TVA)
+    -- Ligne 3: Crédit TVA (TVA)
     IF v_montant_tva > 0 THEN
       INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
-      VALUES (v_ecriture_id, v_compte_tva, 0, v_montant_tva, 'TVA FacturÃ©e');
+      VALUES (v_ecriture_id, v_compte_tva, 0, v_montant_tva, 'TVA Facturée');
     END IF;
 
   END IF;
@@ -1566,29 +1551,29 @@ BEGIN
     v_journal_id := get_journal_id('ACH');
     v_compte_fournisseur := get_compte_id('4411'); -- Fournisseurs
     v_compte_achat := get_compte_id('6111');       -- Achats Marchandises
-    v_compte_tva := get_compte_id('3455');         -- TVA RÃ©cupÃ©rable
+    v_compte_tva := get_compte_id('3455');         -- TVA Récupérable
 
     INSERT INTO ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut)
-    VALUES (CURRENT_DATE, v_journal_id, 'Facture Achat NÂ° ' || NEW.numero, 'bon_achat', NEW.id, 'valide')
+    VALUES (CURRENT_DATE, v_journal_id, 'Facture Achat N° ' || NEW.numero, 'bon_achat', NEW.id, 'valide')
     RETURNING id INTO v_ecriture_id;
 
     -- USE EXACT AMOUNTS FROM DOCUMENT
     v_montant_ht := NEW.montant_ht;
     v_montant_tva := NEW.montant_tva;
 
-    -- Ligne 1: DÃ©bit Achat (HT)
+    -- Ligne 1: Débit Achat (HT)
     IF v_montant_ht > 0 THEN
       INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
       VALUES (v_ecriture_id, v_compte_achat, v_montant_ht, 0, 'Achat Marchandises');
     END IF;
 
-    -- Ligne 2: DÃ©bit TVA (TVA)
+    -- Ligne 2: Débit TVA (TVA)
     IF v_montant_tva > 0 THEN
       INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
-      VALUES (v_ecriture_id, v_compte_tva, v_montant_tva, 0, 'TVA RÃ©cupÃ©rable');
+      VALUES (v_ecriture_id, v_compte_tva, v_montant_tva, 0, 'TVA Récupérable');
     END IF;
 
-    -- Ligne 3: CrÃ©dit Fournisseur (TTC)
+    -- Ligne 3: Crédit Fournisseur (TTC)
     INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
     VALUES (v_ecriture_id, v_compte_fournisseur, 0, NEW.montant_ttc, 'Fournisseur');
 
@@ -1602,7 +1587,7 @@ CREATE OR REPLACE TRIGGER trg_compta_achat
   FOR EACH ROW EXECUTE FUNCTION trg_generate_ecriture_achat();
 
 -- ============================================================
--- 3. Trigger: Paiement (TrÃ©sorerie)
+-- 3. Trigger: Paiement (Trésorerie)
 -- ============================================================
 CREATE OR REPLACE FUNCTION trg_generate_ecriture_paiement() RETURNS TRIGGER AS $$
 DECLARE
@@ -1625,30 +1610,30 @@ BEGIN
   END IF;
 
   INSERT INTO ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut)
-  VALUES (NEW.date::date, v_journal_id, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id, 'valide')
+  VALUES (NEW.date::date, v_journal_id, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id, 'valide')
   RETURNING id INTO v_ecriture_id;
 
   IF NEW.reference_type IN ('bon_livraison', 'bon_retour_achat') THEN
      -- Encaissement
      v_compte_tiers := get_compte_id('3421'); -- Client
 
-     -- DÃ©bit Treso
+     -- Débit Treso
      INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit)
      VALUES (v_ecriture_id, v_compte_treso, NEW.montant, 0);
 
-     -- CrÃ©dit Client
+     -- Crédit Client
      INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit)
      VALUES (v_ecriture_id, v_compte_tiers, 0, NEW.montant);
 
   ELSE 
-     -- DÃ©caissement
+     -- Décaissement
      v_compte_tiers := get_compte_id('4411'); -- Fournisseur
 
-     -- DÃ©bit Fournisseur
+     -- Débit Fournisseur
      INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit)
      VALUES (v_ecriture_id, v_compte_tiers, NEW.montant, 0);
 
-     -- CrÃ©dit Treso
+     -- Crédit Treso
      INSERT INTO lignes_ecriture (ecriture_id, compte_id, debit, credit)
      VALUES (v_ecriture_id, v_compte_treso, 0, NEW.montant);
   END IF;
@@ -1662,8 +1647,6 @@ CREATE OR REPLACE TRIGGER trg_compta_paiement
   FOR EACH ROW EXECUTE FUNCTION trg_generate_ecriture_paiement();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00012_accounting_views.sql
 --- ==========================================================================
@@ -1671,7 +1654,7 @@ CREATE OR REPLACE TRIGGER trg_compta_paiement
 -- Migration: Vues Comptables (Reporting)
 -- ============================================================
 
--- 1. Vue: Balance GÃ©nÃ©rale (Aggregated by Account)
+-- 1. Vue: Balance Générale (Aggregated by Account)
 CREATE OR REPLACE VIEW v_balance_generale AS
 SELECT 
     p.id as compte_id,
@@ -1720,8 +1703,6 @@ GRANT SELECT ON v_balance_generale TO service_role;
 GRANT SELECT ON v_grand_livre TO service_role;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00013_stock_trigger.sql
 --- ==========================================================================
@@ -1749,8 +1730,6 @@ CREATE TRIGGER trg_sync_stock
   FOR EACH ROW EXECUTE FUNCTION sync_stock_from_movement();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00014_article_stock_view.sql
 --- ==========================================================================
@@ -1769,8 +1748,6 @@ GRANT SELECT ON v_articles_avec_stock TO authenticated;
 GRANT SELECT ON v_articles_avec_stock TO service_role;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00016_fix_validate_bc_rpc.sql
 --- ==========================================================================
@@ -1782,24 +1759,24 @@ DECLARE
   v_ba_id UUID;
   v_numero VARCHAR;
 BEGIN
-  -- 1. RÃ©cupÃ©rer le BC
+  -- 1. Récupérer le BC
   SELECT * INTO v_bc FROM bon_commandes WHERE id = p_bc_id;
   
   IF v_bc IS NULL THEN
     RAISE EXCEPTION 'Bon de commande introuvable';
   END IF;
 
-  -- 2. VÃ©rifier si dÃ©jÃ  validÃ© (ou reÃ§u)
+  -- 2. Vérifier si déjà validé (ou reçu)
   IF v_bc.statut = 'recu' AND EXISTS (SELECT 1 FROM bon_achats WHERE bon_commande_id = p_bc_id) THEN
-    RAISE EXCEPTION 'Ce bon de commande a dÃ©jÃ  Ã©tÃ© validÃ© et un BA existe dÃ©jÃ .';
+    RAISE EXCEPTION 'Ce bon de commande a déjà été validé et un BA existe déjà.';
   END IF;
 
   -- 3. VALIDATION ATOMIQUE --
   
-  -- A. Mettre Ã  jour le statut du BC (Final Status = 'recu')
+  -- A. Mettre à jour le statut du BC (Final Status = 'recu')
   UPDATE bon_commandes SET statut = 'recu' WHERE id = p_bc_id;
   
-  -- B. CrÃ©er le Bon d'Achat (Brouillon)
+  -- B. Créer le Bon d'Achat (Brouillon)
   SELECT next_numero('bon_achat') INTO v_numero;
 
   INSERT INTO bon_achats (
@@ -1808,7 +1785,7 @@ BEGIN
   ) VALUES (
     v_numero, CURRENT_DATE, v_bc.fournisseur_id, p_bc_id, p_depot_id, 'brouillon',
     v_bc.montant_ht, v_bc.montant_tva, v_bc.montant_ttc,
-    'CrÃ©Ã© automatiquement depuis BC ' || v_bc.numero
+    'Créé automatiquement depuis BC ' || v_bc.numero
   ) RETURNING id INTO v_ba_id;
 
   INSERT INTO bon_achat_lignes (
@@ -1826,8 +1803,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00017_add_inclure_tva.sql
 --- ==========================================================================
@@ -1838,16 +1813,15 @@ ALTER TABLE bon_retours ADD COLUMN IF NOT EXISTS inclure_tva BOOLEAN NOT NULL DE
 ALTER TABLE bon_commandes ADD COLUMN IF NOT EXISTS inclure_tva BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE bon_achats ADD COLUMN IF NOT EXISTS inclure_tva BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE bon_retour_achats ADD COLUMN IF NOT EXISTS inclure_tva BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ventes_pos ADD COLUMN IF NOT EXISTS inclure_tva BOOLEAN NOT NULL DEFAULT false;
 
--- Mettre Ã  jour les types pour inclure ce nouveau champ (si nÃ©cessaire pour introspection, bien que Supabase le fasse auto)
-COMMENT ON COLUMN devis.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-COMMENT ON COLUMN bon_livraisons.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-COMMENT ON COLUMN bon_retours.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-COMMENT ON COLUMN bon_commandes.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-COMMENT ON COLUMN bon_achats.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-COMMENT ON COLUMN bon_retour_achats.inclure_tva IS 'Indique si la TVA doit Ãªtre calculÃ©e e affichÃ©e dans le document';
-
-
+-- Mettre à jour les types pour inclure ce nouveau champ (si nécessaire pour introspection, bien que Supabase le fasse auto)
+COMMENT ON COLUMN devis.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
+COMMENT ON COLUMN bon_livraisons.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
+COMMENT ON COLUMN bon_retours.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
+COMMENT ON COLUMN bon_commandes.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
+COMMENT ON COLUMN bon_achats.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
+COMMENT ON COLUMN bon_retour_achats.inclure_tva IS 'Indique si la TVA doit être calculée e affichée dans le document';
 
 
 --- ==========================================================================
@@ -1869,7 +1843,7 @@ BEGIN
 
   -- Allow re-accepting if BL doesn't exist (idempotency fix for partial failures)
   IF v_devis.statut = 'accepte' AND EXISTS (SELECT 1 FROM bon_livraisons WHERE devis_id = p_devis_id) THEN
-    RAISE EXCEPTION 'Ce devis a dÃ©jÃ  Ã©tÃ© acceptÃ© et un BL existe dÃ©jÃ .';
+    RAISE EXCEPTION 'Ce devis a déjà été accepté et un BL existe déjà.';
   END IF;
 
   -- 2. Update status
@@ -1885,7 +1859,7 @@ BEGIN
   ) VALUES (
     v_numero, CURRENT_DATE, v_devis.client_id, p_devis_id, p_depot_id, 'brouillon',
     v_devis.montant_ht, v_devis.montant_tva, v_devis.montant_ttc,
-    'CrÃ©Ã© automatiquement depuis devis ' || v_devis.numero,
+    'Créé automatiquement depuis devis ' || v_devis.numero,
     v_devis.inclure_tva
   ) RETURNING id INTO v_bl_id;
 
@@ -1913,24 +1887,24 @@ DECLARE
   v_ba_id UUID;
   v_numero VARCHAR;
 BEGIN
-  -- 1. RÃ©cupÃ©rer le BC
+  -- 1. Récupérer le BC
   SELECT * INTO v_bc FROM bon_commandes WHERE id = p_bc_id;
   
   IF v_bc IS NULL THEN
     RAISE EXCEPTION 'Bon de commande introuvable';
   END IF;
 
-  -- 2. VÃ©rifier si dÃ©jÃ  validÃ© (ou reÃ§u)
+  -- 2. Vérifier si déjà validé (ou reçu)
   IF v_bc.statut = 'recu' AND EXISTS (SELECT 1 FROM bon_achats WHERE bon_commande_id = p_bc_id) THEN
-    RAISE EXCEPTION 'Ce bon de commande a dÃ©jÃ  Ã©tÃ© validÃ© et un BA existe dÃ©jÃ .';
+    RAISE EXCEPTION 'Ce bon de commande a déjà été validé et un BA existe déjà.';
   END IF;
 
   -- 3. VALIDATION ATOMIQUE --
   
-  -- A. Mettre Ã  jour le statut du BC (Final Status = 'recu')
+  -- A. Mettre à jour le statut du BC (Final Status = 'recu')
   UPDATE bon_commandes SET statut = 'recu' WHERE id = p_bc_id;
   
-  -- B. CrÃ©er le Bon d'Achat (Brouillon) (carrying over inclure_tva)
+  -- B. Créer le Bon d'Achat (Brouillon) (carrying over inclure_tva)
   SELECT next_numero('bon_achat') INTO v_numero;
 
   INSERT INTO bon_achats (
@@ -1939,7 +1913,7 @@ BEGIN
   ) VALUES (
     v_numero, CURRENT_DATE, v_bc.fournisseur_id, p_bc_id, p_depot_id, 'brouillon',
     v_bc.montant_ht, v_bc.montant_tva, v_bc.montant_ttc,
-    'CrÃ©Ã© automatiquement depuis BC ' || v_bc.numero,
+    'Créé automatiquement depuis BC ' || v_bc.numero,
     v_bc.inclure_tva
   ) RETURNING id INTO v_ba_id;
 
@@ -1956,8 +1930,6 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'ba_id', v_ba_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
 
 
 --- ==========================================================================
@@ -2071,8 +2043,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00020_add_fiscal_tracking_to_finance.sql
 --- ==========================================================================
@@ -2116,7 +2086,7 @@ BEGIN
 
     -- Update Treasury Movement
     INSERT INTO public.mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id, inclure_tva)
-    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
+    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
     
     IF mvt_type = 'entree' THEN
       UPDATE public.tresoreries SET solde = solde + NEW.montant WHERE id = NEW.tresorerie_id;
@@ -2177,7 +2147,7 @@ BEGIN
     compte_tva_val := public.get_compte_id('4455');
 
     INSERT INTO public.ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut, inclure_tva)
-    VALUES (CURRENT_DATE, journal_id_val, 'Facture NÂ° ' || NEW.numero, 'bon_livraison', NEW.id, 'valide', NEW.inclure_tva)
+    VALUES (CURRENT_DATE, journal_id_val, 'Facture N° ' || NEW.numero, 'bon_livraison', NEW.id, 'valide', NEW.inclure_tva)
     RETURNING id INTO ecriture_id_val;
 
     INSERT INTO public.lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
@@ -2190,7 +2160,7 @@ BEGIN
 
     IF NEW.montant_tva > 0 THEN
       INSERT INTO public.lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
-      VALUES (ecriture_id_val, compte_tva_val, 0, NEW.montant_tva, 'TVA FacturÃ©e');
+      VALUES (ecriture_id_val, compte_tva_val, 0, NEW.montant_tva, 'TVA Facturée');
     END IF;
   END IF;
   RETURN NEW;
@@ -2213,7 +2183,7 @@ BEGIN
     compte_tva_val := public.get_compte_id('3455');
 
     INSERT INTO public.ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut, inclure_tva)
-    VALUES (CURRENT_DATE, journal_id_val, 'Facture Achat NÂ° ' || NEW.numero, 'bon_achat', NEW.id, 'valide', NEW.inclure_tva)
+    VALUES (CURRENT_DATE, journal_id_val, 'Facture Achat N° ' || NEW.numero, 'bon_achat', NEW.id, 'valide', NEW.inclure_tva)
     RETURNING id INTO ecriture_id_val;
 
     IF NEW.montant_ht > 0 THEN
@@ -2223,7 +2193,7 @@ BEGIN
 
     IF NEW.montant_tva > 0 THEN
       INSERT INTO public.lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
-      VALUES (ecriture_id_val, compte_tva_val, NEW.montant_tva, 0, 'TVA RÃ©cupÃ©rable');
+      VALUES (ecriture_id_val, compte_tva_val, NEW.montant_tva, 0, 'TVA Récupérable');
     END IF;
 
     INSERT INTO public.lignes_ecriture (ecriture_id, compte_id, debit, credit, libelle)
@@ -2266,7 +2236,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.ecritures_comptables (date, journal_id, libelle, reference_type, reference_id, statut, inclure_tva)
-  VALUES (NEW.date::date, journal_id_val, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id, 'valide', COALESCE(is_documented, false))
+  VALUES (NEW.date::date, journal_id_val, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id, 'valide', COALESCE(is_documented, false))
   RETURNING id INTO ecriture_id_val;
 
   IF NEW.reference_type IN ('bon_livraison', 'bon_retour_achat', 'vente_pos') THEN
@@ -2336,8 +2306,6 @@ GRANT SELECT ON public.v_balance_generale_fiscal TO authenticated;
 GRANT SELECT ON public.v_balance_generale_fiscal TO service_role;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00021_add_fiscal_stock_rpc.sql
 --- ==========================================================================
@@ -2387,8 +2355,6 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION public.get_fiscal_stock(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_fiscal_stock(UUID) TO service_role;
-
-
 
 
 --- ==========================================================================
@@ -2497,8 +2463,6 @@ CREATE TRIGGER trg_vente_pos_stock
   FOR EACH ROW EXECUTE FUNCTION public.trg_vente_pos_stock_handler();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00023_master_data_fiscal_support.sql
 --- ==========================================================================
@@ -2541,7 +2505,7 @@ BEGIN
 
     -- Update Treasury Movement
     INSERT INTO public.mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id, inclure_tva)
-    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
+    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
     
     -- Global Balance Update
     IF mvt_type = 'entree' THEN
@@ -2602,8 +2566,6 @@ SET solde_fiscale = (
 );
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00024_add_depenses_and_sous_familles.sql
 --- ==========================================================================
@@ -2620,12 +2582,12 @@ CREATE TABLE IF NOT EXISTS public.sous_familles_articles (
 -- 2. Update articles table to link to sub-families
 ALTER TABLE public.articles ADD COLUMN IF NOT EXISTS sous_famille_id UUID REFERENCES public.sous_familles_articles(id) ON DELETE SET NULL;
 
--- 3. Create Expenses (DÃ©penses) table
+-- 3. Create Expenses (Dépenses) table
 CREATE TABLE IF NOT EXISTS public.depenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     numero TEXT UNIQUE NOT NULL,
     date DATE NOT NULL DEFAULT CURRENT_DATE,
-    categorie TEXT NOT NULL, -- 'Loyer', 'Salaire', 'Internet', 'ElectricitÃ©', 'Autre'
+    categorie TEXT NOT NULL, -- 'Loyer', 'Salaire', 'Internet', 'Electricité', 'Autre'
     montant DECIMAL(15,2) NOT NULL DEFAULT 0,
     tresorerie_id UUID NOT NULL REFERENCES public.tresoreries(id),
     notes TEXT,
@@ -2655,7 +2617,7 @@ BEGIN
     IF (TG_OP = 'INSERT') THEN
         -- Create a treasury movement
         INSERT INTO public.mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id, inclure_tva)
-        VALUES (NEW.tresorerie_id, 'sortie', NEW.montant, 'DÃ©pense: ' || NEW.categorie || ' (' || NEW.numero || ')', 'depense', NEW.id, NEW.inclure_tva);
+        VALUES (NEW.tresorerie_id, 'sortie', NEW.montant, 'Dépense: ' || NEW.categorie || ' (' || NEW.numero || ')', 'depense', NEW.id, NEW.inclure_tva);
         
         -- Update solde
         UPDATE public.tresoreries SET solde = solde - NEW.montant WHERE id = NEW.tresorerie_id;
@@ -2685,8 +2647,6 @@ GRANT ALL ON public.sous_familles_articles TO authenticated;
 GRANT ALL ON public.depenses TO authenticated;
 GRANT ALL ON public.sous_familles_articles TO service_role;
 GRANT ALL ON public.depenses TO service_role;
-
-
 
 
 --- ==========================================================================
@@ -2760,8 +2720,6 @@ JOIN public.depots d ON s.depot_id = d.id;
 GRANT SELECT ON public.vw_stock_detaille TO authenticated;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00026_finalize_finance_views.sql
 --- ==========================================================================
@@ -2783,8 +2741,6 @@ WHERE p.mode_paiement IN ('cheque', 'effet');
 
 -- 3. Permissions
 GRANT SELECT ON public.vw_portefeuille TO authenticated;
-
-
 
 
 --- ==========================================================================
@@ -2844,8 +2800,6 @@ GRANT EXECUTE ON FUNCTION public.find_article_by_code(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.find_article_by_code(TEXT) TO service_role;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00028_add_regularisation_tracking.sql
 --- ==========================================================================
@@ -2861,8 +2815,6 @@ ALTER TABLE bon_livraison_lignes ADD COLUMN IF NOT EXISTS is_regularisation BOOL
 -- Index for traceability view performance
 CREATE INDEX IF NOT EXISTS idx_bl_regularisation ON bon_livraisons(is_regularisation) WHERE is_regularisation = true;
 CREATE INDEX IF NOT EXISTS idx_devis_regularisation ON devis(is_regularisation) WHERE is_regularisation = true;
-
-
 
 
 --- ==========================================================================
@@ -2901,8 +2853,6 @@ JOIN depots d ON s.depot_id = d.id;
 -- Grant access
 GRANT SELECT ON v_fiscal_balance TO authenticated;
 GRANT SELECT ON v_fiscal_balance TO service_role;
-
-
 
 
 --- ==========================================================================
@@ -2978,7 +2928,7 @@ BEGIN
 
     -- Update Treasury Movement
     INSERT INTO public.mouvements_tresorerie (tresorerie_id, type, montant, libelle, reference_type, reference_id, inclure_tva)
-    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'RÃ¨glement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
+    VALUES (NEW.tresorerie_id, mvt_type, NEW.montant, 'Règlement ' || NEW.reference_type, 'paiement', NEW.id, COALESCE(is_documented, false));
     
     -- Global Balance Update
     IF mvt_type = 'entree' THEN
@@ -3038,8 +2988,6 @@ BEGIN
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
 
 
 --- ==========================================================================
@@ -3109,12 +3057,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00032_auto_generate_codes.sql
 --- ==========================================================================
--- FunciÃ³n para generar cÃ³digos automÃ¡ticos para Clientes y ArtÃ­culos
+-- Función para generar códigos automáticos para Clientes y Artículos
 CREATE OR REPLACE FUNCTION generate_missing_code()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -3123,12 +3069,12 @@ DECLARE
   new_code TEXT;
   counter INT;
 BEGIN
-  -- Si ya tiene cÃ³digo, no hacemos nada
+  -- Si ya tiene código, no hacemos nada
   IF NEW.code IS NOT NULL AND NEW.code <> '' THEN
     RETURN NEW;
   END IF;
 
-  -- Determinar prefijo segÃºn tabla
+  -- Determinar prefijo según tabla
   tbl := TG_TABLE_NAME;
   IF tbl = 'clients' THEN prefix := 'CLI-';
   ELSIF tbl = 'articles' THEN prefix := 'ART-';
@@ -3136,7 +3082,7 @@ BEGIN
   ELSE prefix := 'GEN-';
   END IF;
 
-  -- Generar cÃ³digo Ãºnico sencillo
+  -- Generar código único sencillo
   SELECT count(*) + 1 INTO counter FROM (SELECT 1 FROM clients UNION ALL SELECT 1 FROM articles UNION ALL SELECT 1 FROM fournisseurs) as total;
   new_code := prefix || LPAD(counter::TEXT, 5, '0');
   
@@ -3154,8 +3100,6 @@ CREATE TRIGGER trg_auto_code_articles BEFORE INSERT ON articles FOR EACH ROW EXE
 
 DROP TRIGGER IF EXISTS trg_auto_code_fournisseurs ON fournisseurs;
 CREATE TRIGGER trg_auto_code_fournisseurs BEFORE INSERT ON fournisseurs FOR EACH ROW EXECUTE FUNCTION generate_missing_code();
-
-
 
 
 --- ==========================================================================
@@ -3221,8 +3165,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00033_fix_system_reset_rpc_accounting.sql
 --- ==========================================================================
@@ -3286,8 +3228,6 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
 
 
 --- ==========================================================================
@@ -3615,8 +3555,6 @@ CREATE TRIGGER trg_bon_retour_achat_stock
   FOR EACH ROW EXECUTE FUNCTION public.on_bon_retour_achat_statut_change();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00034_fix_stock_triggers_insert.sql
 --- ==========================================================================
@@ -3720,8 +3658,6 @@ CREATE TRIGGER trg_bon_retour_achat_stock
   FOR EACH ROW EXECUTE FUNCTION public.on_bon_retour_achat_valide();
 
 
-
-
 --- ==========================================================================
 --- MIGRATION: 00035_robust_master_data_codes.sql
 --- ==========================================================================
@@ -3753,11 +3689,11 @@ BEGIN
     RAISE EXCEPTION 'Sequence type % not found', p_type;
   END IF;
 
-  -- Master data format: PREFIX00001 (sin aÃ±o)
+  -- Master data format: PREFIX00001 (sin año)
   IF p_type IN ('client', 'fournisseur', 'article', 'famille_article', 'depot', 'salarie', 'tresorerie') THEN
     v_numero := v_seq.prefixe || LPAD(v_seq.dernier_numero::TEXT, 5, '0');
   ELSE
-    -- Documents format: PREFIX-YYYY-0001 (con aÃ±o)
+    -- Documents format: PREFIX-YYYY-0001 (con año)
     v_numero := v_seq.prefixe || '-' || EXTRACT(YEAR FROM now())::TEXT || '-' || LPAD(v_seq.dernier_numero::TEXT, 4, '0');
   END IF;
   
@@ -3792,7 +3728,5 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-
 
 

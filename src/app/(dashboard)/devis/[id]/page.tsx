@@ -63,11 +63,7 @@ export default function DevisDetailPage() {
                 <Card>
                     <CardHeader><CardTitle>Montants</CardTitle></CardHeader>
                     <CardContent className="space-y-2">
-                        <div><span className="text-sm text-muted-foreground">{devis.inclure_tva ? "HT" : "Montant Total"}</span><p>{Number(devis.montant_ht).toFixed(2)} MAD</p></div>
-                        {devis.inclure_tva && (
-                            <div><span className="text-sm text-muted-foreground">TVA</span><p>{Number(devis.montant_tva).toFixed(2)} MAD</p></div>
-                        )}
-                        <div><span className="text-sm text-muted-foreground">Net à Payer</span><p className="text-lg font-bold">{Number(devis.montant_ttc).toFixed(2)} MAD</p></div>
+                        <div><span className="text-sm text-muted-foreground">Total Net</span><p className="text-lg font-bold">{Number(devis.montant_ttc).toFixed(2)} MAD</p></div>
                     </CardContent>
                 </Card>
             </div>
@@ -82,8 +78,7 @@ export default function DevisDetailPage() {
                                     <TableHead>Désignation</TableHead>
                                     <TableHead className="w-[100px]">Qté</TableHead>
                                     <TableHead className="w-[120px]">Prix unit.</TableHead>
-                                    {devis.inclure_tva && <TableHead className="w-[80px]">TVA</TableHead>}
-                                    <TableHead className="w-[120px] text-right">{devis.inclure_tva ? "Montant HT" : "Montant Total"}</TableHead>
+                                    <TableHead className="w-[120px] text-right">Montant Total</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -92,24 +87,13 @@ export default function DevisDetailPage() {
                                             <TableCell>{ligne.designation}</TableCell>
                                             <TableCell>{ligne.quantite}</TableCell>
                                             <TableCell>{Number(ligne.prix_unitaire).toFixed(2)} MAD</TableCell>
-                                            {devis.inclure_tva && <TableCell>{ligne.tva}%</TableCell>}
                                             <TableCell className="text-right font-medium">{Number(ligne.montant_ht).toFixed(2)} MAD</TableCell>
                                         </TableRow>
                                 ))}
                             </TableBody>
                              <TableFooter>
                                 <TableRow>
-                                    <TableCell colSpan={devis.inclure_tva ? 4 : 3} className="text-right font-medium">{devis.inclure_tva ? "Total HT" : "Montant Total"}</TableCell>
-                                    <TableCell className="text-right font-bold">{Number(devis.montant_ht).toFixed(2)} MAD</TableCell>
-                                </TableRow>
-                                {devis.inclure_tva && (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="text-right font-medium">TVA</TableCell>
-                                        <TableCell className="text-right font-bold">{Number(devis.montant_tva).toFixed(2)} MAD</TableCell>
-                                    </TableRow>
-                                )}
-                                <TableRow>
-                                    <TableCell colSpan={devis.inclure_tva ? 4 : 3} className="text-right font-medium text-lg">Net à Payer</TableCell>
+                                    <TableCell colSpan={3} className="text-right font-medium text-lg">Total Net</TableCell>
                                     <TableCell className="text-right font-bold text-lg">{Number(devis.montant_ttc).toFixed(2)} MAD</TableCell>
                                 </TableRow>
                             </TableFooter>

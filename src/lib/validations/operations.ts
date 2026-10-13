@@ -16,6 +16,9 @@ export const ventePosSchema = z.object({
     depot_id: z.string().min(1, "Le dépôt est obligatoire"),
     mode_paiement: z.enum(["especes", "carte", "cheque", "virement", "effet"]).default("especes"),
     inclure_tva: z.boolean().default(false),
+    montant_ht: z.coerce.number().optional(),
+    montant_ttc: z.coerce.number().optional(),
+    remise: z.coerce.number().optional(),
     lignes: z.array(ventePosLigneSchema).min(1, "Au moins un article est requis"),
 })
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Pencil, History, ShoppingCart } from "lucide-react"
+import { Pencil, History, ShoppingCart, Package } from "lucide-react"
 import Link from "next/link"
 import { useHistoriqueArticle } from "@/hooks/use-mouvements-stock"
 import { DataTable } from "@/components/data-table/data-table"
@@ -37,7 +37,7 @@ export default function ArticleDetailPage() {
             case "bon_achat": return `/bon-achats/${id}`
             case "bon_retour": return `/bon-retours/${id}`
             case "bon_retour_achat": return `/bon-retour-achats/${id}`
-            case "vente_pos": return `/pos/ventes/${id}`
+            case "vente_pos": return `/historique-pos/${id}`
             case "devis": return `/devis/${id}`
             default: return null
         }
@@ -151,10 +151,23 @@ export default function ArticleDetailPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">{article.designation}</h2>
-                    <p className="text-muted-foreground">Code : {article.code} {article.reference && `| Réf : ${article.reference}`}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    {article.image_url ? (
+                        <img
+                            src={article.image_url}
+                            alt={article.designation}
+                            className="h-16 w-16 rounded-xl object-cover border shadow-sm bg-muted/40"
+                        />
+                    ) : (
+                        <div className="h-16 w-16 rounded-xl border bg-muted/40 flex items-center justify-center">
+                            <Package className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                    )}
+                    <div>
+                        <h2 className="text-3xl font-bold tracking-tight">{article.designation}</h2>
+                        <p className="text-muted-foreground">Code : {article.code} {article.reference && `| Réf : ${article.reference}`}</p>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant={article.actif ? "default" : "secondary"}>
@@ -201,10 +214,6 @@ export default function ArticleDetailPage() {
                         <div>
                             <span className="text-sm text-muted-foreground">Prix de vente</span>
                             <p className="text-lg font-semibold">{Number(article.prix_vente).toFixed(2)} DH</p>
-                        </div>
-                        <div>
-                            <span className="text-sm text-muted-foreground">TVA</span>
-                            <p>{article.tva}%</p>
                         </div>
                     </CardContent>
                 </Card>

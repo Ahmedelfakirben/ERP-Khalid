@@ -21,7 +21,6 @@ export default function BonCommandesPage() {
     const { data: bcs, isLoading } = useBonCommandeList()
     const deleteBC = useDeleteBonCommande()
     const updateStatut = useUpdateBonCommandeStatut()
-    const toggleTVA = useToggleBonCommandeTVA()
     const { exportToExcel, isExporting } = useExportToExcel()
 
     const handleExport = (filteredRows: any[]) => {
@@ -29,14 +28,6 @@ export default function BonCommandesPage() {
     }
 
     const handleDelete = async (id: string) => { try { await deleteBC.mutateAsync(id); toast.success("Bon de commande supprimé") } catch { toast.error("Erreur lors de la suppression") } }
-    const handleToggleTVA = async (id: string, currentInclureTva: boolean) => {
-        try {
-            await toggleTVA.mutateAsync({ id, inclure_tva: !currentInclureTva })
-            toast.success(`TVA ${!currentInclureTva ? "activée" : "désactivée"} con éxito`)
-        } catch (error: any) {
-            toast.error(error.message || "Erreur lors du changement de TVA")
-        }
-    }
 
     const columns: ColumnDef<BonCommande>[] = [
         { accessorKey: "numero", header: "N° BC" },
@@ -45,18 +36,13 @@ export default function BonCommandesPage() {
             accessorFn: (row) => row.fournisseur?.raison_sociale, 
             id: "fournisseur", 
             header: "Fournisseur", 
-            cell: ({ row }) => row.original.fournisseur?.raison_sociale || "—" 
-        },
-        { accessorKey: "montant_ttc", header: "Montant TTC", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
-        {
-            id: "type",
-            header: "Tipo",
             cell: ({ row }) => (
-                <div className="flex justify-center">
-                    {row.original.inclure_tva ? "✅" : "➖"}
+                <div className="max-w-[200px] truncate font-medium text-xs text-foreground" title={row.original.fournisseur?.raison_sociale || ""}>
+                    {row.original.fournisseur?.raison_sociale || "—"}
                 </div>
-            ),
+            ) 
         },
+        { accessorKey: "montant_ttc", header: "Montant Total", cell: ({ row }) => `${Number(row.original.montant_ttc).toFixed(2)} MAD` },
         { accessorKey: "statut", header: "Statut", cell: ({ row }) => <Badge variant={statutColors[row.original.statut] || "secondary"}>{statutLabels[row.original.statut] || row.original.statut}</Badge> },
         {
             id: "actions",
@@ -70,10 +56,6 @@ export default function BonCommandesPage() {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem asChild><Link href={`/bon-commandes/${bc.id}`}><Eye className="mr-2 h-4 w-4" />Voir</Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href={`/bon-commandes/${bc.id}/modifier`}><Pencil className="mr-2 h-4 w-4" />Modifier</Link></DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleTVA(bc.id, !!bc.inclure_tva)}>
-                                    <FileText className="mr-2 h-4 w-4" />
-                                    {bc.inclure_tva ? "Retirer TVA" : "Appliquer TVA"}
-                                </DropdownMenuItem>
                                 {bc.statut === "brouillon" && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => updateStatut.mutateAsync({ id: bc.id, statut: "envoye" }).then(() => toast.success("BC envoyé")).catch(() => toast.error("Erreur"))}><Send className="mr-2 h-4 w-4" />Envoyer</DropdownMenuItem></>)}
                                 {bc.statut === "envoye" && (<><DropdownMenuSeparator /><DropdownMenuItem onClick={() => updateStatut.mutateAsync({ id: bc.id, statut: "recu" }).then(() => toast.success("BC marqué reçu")).catch(() => toast.error("Erreur"))}><CheckCircle className="mr-2 h-4 w-4 text-green-600" />Marquer reçu</DropdownMenuItem></>)}
                                 <DropdownMenuSeparator />

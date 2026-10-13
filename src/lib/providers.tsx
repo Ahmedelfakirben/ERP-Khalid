@@ -1,6 +1,6 @@
 "use client"
 
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister"
 import { useState, useEffect } from "react"
@@ -21,29 +21,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   )
 
-  const [persister, setPersister] = useState<any>(null)
-
-  useEffect(() => {
+  const [persister] = useState<any>(() => {
     if (typeof window !== "undefined") {
-      setPersister(
-        createSyncStoragePersister({
+      try {
+        return createSyncStoragePersister({
           storage: window.localStorage,
         })
-      )
+      } catch (e) {
+        console.warn("Could not create storage persister:", e)
+      }
     }
-  }, [])
+    return null
+  })
 
   if (!persister) {
     return (
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{ persister: { persistQueryClient: () => {}, restoreQueryClient: () => {}, removeClient: () => {} } as any }}
-      >
+      <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           {children}
           <Toaster position="top-right" richColors />
         </TooltipProvider>
-      </PersistQueryClientProvider>
+      </QueryClientProvider>
     )
   }
 

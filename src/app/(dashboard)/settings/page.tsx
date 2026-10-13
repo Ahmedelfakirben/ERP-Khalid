@@ -9,12 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { User, Building, Save, Loader2, ReceiptText } from "lucide-react"
+import { User, Building, Save, Loader2, ReceiptText, CheckCircle2, Camera } from "lucide-react"
 import { toast } from "sonner"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BrainCircuit, Key, Globe } from "lucide-react"
 
 export default function SettingsPage() {
     const supabase = createClient()
@@ -108,7 +105,7 @@ export default function SettingsPage() {
 
 
             <Separator />
-            <AISettingsSection />
+            <VisualRecognitionSettingsSection />
             <Separator />
             <AdminManagement profileEmail={profile.email} />
             <Separator />
@@ -117,120 +114,92 @@ export default function SettingsPage() {
     )
 }
 
-function AISettingsSection() {
-    const [settings, setSettings] = useState({
-        provider: "ollama",
-        groqKey: "",
-        geminiKey: "",
-        ollamaModel: "llama3.1:8b",
-        language: "fr"
-    })
+function VisualRecognitionSettingsSection() {
+    const [isSyncing, setIsSyncing] = useState(false)
+    const [cachedCount, setCachedCount] = useState<number | null>(null)
 
     useEffect(() => {
-        const saved = localStorage.getItem("ai_settings")
-        if (saved) {
-            try { setSettings(JSON.parse(saved)) } catch (e) {}
+        async function fetchStatus() {
+            try {
+                const res = await fetch("/api/articles/signature")
+                const data = await res.json()
+                if (data.total_in_cache !== undefined) {
+                    setCachedCount(data.total_in_cache)
+                }
+            } catch (e) {
+                console.error("Erreur statut vision:", e)
+            }
         }
+        fetchStatus()
     }, [])
 
-    const handleSave = () => {
-        localStorage.setItem("ai_settings", JSON.stringify(settings))
-        toast.success("Configuración de IA guardada localmente")
+    const handleSync = async () => {
+        setIsSyncing(true)
+        try {
+            const res = await fetch("/api/articles/signature")
+            const data = await res.json()
+            if (data.success) {
+                setCachedCount(data.total_in_cache)
+                toast.success(`Indexation réussie : ${data.total_in_cache} articles prêts pour la reconnaissance au TPV`)
+            } else {
+                toast.error(data.error || "Erreur lors de la synchronisation")
+            }
+        } catch {
+            toast.error("Impossible de joindre le service de synchronisation")
+        } finally {
+            setIsSyncing(false)
+        }
     }
 
     return (
-        <Card className="border-blue-500/20">
+        <Card className="border-emerald-500/20 shadow-xs">
             <CardHeader>
-                <div className="flex items-center gap-2">
-                    <BrainCircuit className="h-5 w-5 text-blue-500" />
-                    <CardTitle>Configuración de IA</CardTitle>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Camera className="h-5 w-5 text-emerald-600" />
+                        <CardTitle>Reconnaissance Visuelle des Produits (TPV / POS)</CardTitle>
+                    </div>
+                    <Badge variant="outline" className="text-xs border-emerald-500/40 text-emerald-600 bg-emerald-500/10">
+                        100% Local & Hors-Ligne (Sans IA externe)
+                    </Badge>
                 </div>
                 <CardDescription>
-                    Configura el idioma y el motor del asistente virtual.
+                    Moteur de vision par descripteurs spatiaux couleur et contours (Sobel/YCbCr). Permet d&apos;identifier un produit en caisse instantanément (&lt;50ms) en prenant simplement une photo sous un angle similaire, sans aucun coût d&apos;API externe.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                        <Label>Proveedor</Label>
-                        <Select 
-                            value={settings.provider} 
-                            onValueChange={(val) => setSettings({...settings, provider: val})}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un proveedor" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ollama">Ollama (Hetzner)</SelectItem>
-                                <SelectItem value="groq">Groq (Ultra-Rápido)</SelectItem>
-                                <SelectItem value="gemini">Google Gemini</SelectItem>
-                            </SelectContent>
-                        </Select>
+                <div className="rounded-lg bg-muted/40 p-3.5 border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold">Articles indexés dans le moteur visuel</p>
+                        <p className="text-xs text-muted-foreground">
+                            {cachedCount !== null 
+                                ? `${cachedCount} article(s) avec signature visuelle active en base locale.` 
+                                : "Calcul de l'index en cours..."}
+                        </p>
                     </div>
-                    <div className="space-y-2">
-                        <Label>Idioma del Asistente</Label>
-                        <Select 
-                            value={settings.language} 
-                            onValueChange={(val) => setSettings({...settings, language: val})}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Idioma" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="fr">Français (Francés)</SelectItem>
-                                <SelectItem value="ar">العربية (Árabe Clásico)</SelectItem>
-                                <SelectItem value="darija">Darija (Marroquí)</SelectItem>
-                                <SelectItem value="es">Español</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <Button
+                        type="button"
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 gap-1.5"
+                    >
+                        {isSyncing ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Synchronisation...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-4 w-4" />
+                                Réindexer tout le catalogue
+                            </>
+                        )}
+                    </Button>
                 </div>
-                
-                <div className="grid gap-4 md:grid-cols-2">
-                    {settings.provider === "ollama" && (
-                        <div className="space-y-2">
-                            <Label>Modelo Ollama</Label>
-                            <Input 
-                                value={settings.ollamaModel} 
-                                onChange={(e) => setSettings({...settings, ollamaModel: e.target.value})}
-                                placeholder="llama3.1:8b"
-                            />
-                        </div>
-                    )}
+                <div className="text-[12px] text-muted-foreground space-y-1">
+                    <p>• <strong>Enregistrement :</strong> Lors de la création d&apos;un article, prenez une photo avec la caméra ou importez une image.</p>
+                    <p>• <strong>En caisse (POS) :</strong> Cliquez sur &quot;Reconnaissance Visuelle&quot;, cadrez le produit et la caisse le sélectionne immédiatement.</p>
                 </div>
-
-                {settings.provider === "groq" && (
-                    <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                            <Key className="h-3 w-3" /> Groq API Key
-                        </Label>
-                        <Input 
-                            type="password"
-                            value={settings.groqKey} 
-                            onChange={(e) => setSettings({...settings, groqKey: e.target.value})}
-                            placeholder="gsk_..."
-                        />
-                    </div>
-                )}
-
-                {settings.provider === "gemini" && (
-                    <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                            <Key className="h-3 w-3" /> Gemini API Key
-                        </Label>
-                        <Input 
-                            type="password"
-                            value={settings.geminiKey} 
-                            onChange={(e) => setSettings({...settings, geminiKey: e.target.value})}
-                            placeholder="AIza..."
-                        />
-                    </div>
-                )}
-
-                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="mr-2 h-4 w-4" />
-                    Guardar Configuración IA
-                </Button>
             </CardContent>
         </Card>
     )

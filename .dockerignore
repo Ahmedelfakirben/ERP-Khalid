@@ -10,3 +10,6 @@ desktop-app
 npm-debug.log*
 .env*
 build_output.txt
+.agents
+supabase/.temp
+supabase/storage_backup

@@ -255,7 +255,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild className="border-border/50 hover:bg-muted font-semibold">
-            <Link href="/pos/ventes">Voir tout</Link>
+            <Link href="/historique-pos">Voir tout</Link>
           </Button>
         </CardHeader>
         <CardContent>

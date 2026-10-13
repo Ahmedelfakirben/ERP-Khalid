@@ -6,9 +6,12 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "http://localhost:8000"
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.dummy"
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
@@ -33,22 +36,24 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Public routes that don't require auth
-  const publicRoutes = ["/login", "/forgot-password"]
+  // Public routes and assets that don't require auth
+  const publicRoutes = ["/login", "/forgot-password", "/manifest.webmanifest", "/manifest.json", "/favicon.ico", "/logo.jpeg"]
   const isPublicRoute = publicRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
+    request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route)
   )
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
+    url.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search)
     return NextResponse.redirect(url)
   }
 
-  if (user && isPublicRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = "/dashboard"
-    return NextResponse.redirect(url)
+  const isAuthPage = request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/forgot-password"
+  if (user && isAuthPage) {
+    const redirectTo = request.nextUrl.searchParams.get("redirectTo") || "/dashboard"
+    const target = redirectTo.startsWith("/login") ? "/dashboard" : redirectTo
+    return NextResponse.redirect(new URL(target, request.url))
   }
 
   // RBAC: Check role-based access

@@ -2,7 +2,6 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { AppHeader } from "@/components/layout/app-header"
 import { FiscalModeProvider } from "@/providers/fiscal-mode-context"
-import { AssistantChat } from "@/components/chat/assistant-chat"
 
 import { Suspense } from "react"
 
@@ -16,10 +15,9 @@ export default function DashboardLayout({
       <FiscalModeProvider>
         <SidebarProvider>
           <AppSidebar />
-          <SidebarInset>
+          <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
             <AppHeader />
-            <main className="flex-1 p-6">{children}</main>
-            <AssistantChat />
+            <div className="flex-1 p-4 md:p-6 min-w-0 max-w-full">{children}</div>
           </SidebarInset>
         </SidebarProvider>
       </FiscalModeProvider>

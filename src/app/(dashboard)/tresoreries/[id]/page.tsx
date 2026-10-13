@@ -64,6 +64,11 @@ export default function TresorerieDetailPage() {
         {
             accessorKey: "libelle",
             header: "Libellé",
+            cell: ({ row }) => {
+                const note = row.original.paiement_note
+                const libelle = row.original.libelle
+                return <span>{note || libelle}</span>
+            }
         },
         {
             accessorKey: "montant",
@@ -100,6 +105,12 @@ export default function TresorerieDetailPage() {
                 } else if (type === "bon_retour_achat") {
                     link = `/bon-retour-achats/${id}`
                     label = "Avoir Fournisseur"
+                } else if (type === "vente_pos") {
+                    link = `/pos`
+                    label = "Vente POS"
+                } else if (type === "retour_pos") {
+                    link = `/pos`
+                    label = "Retour POS"
                 }
 
                 if (link) {

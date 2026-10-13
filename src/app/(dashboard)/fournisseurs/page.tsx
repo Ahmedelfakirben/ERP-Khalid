@@ -41,12 +41,44 @@ export default function FournisseursPage() {
     }
 
     const columns: ColumnDef<Fournisseur>[] = [
-        { accessorKey: "code", header: "Code" },
-        { accessorKey: "raison_sociale", header: "Raison sociale" },
-        { accessorKey: "ville", header: "Ville" },
-        { accessorKey: "telephone", header: "Téléphone" },
-        { accessorKey: "email", header: "E-mail" },
-        { accessorKey: "ice", header: "ICE" },
+        {
+            accessorKey: "code",
+            header: "Code",
+            cell: ({ row }) => <span className="font-mono font-bold text-xs">{row.original.code}</span>,
+        },
+        {
+            accessorKey: "raison_sociale",
+            header: "Raison sociale",
+            cell: ({ row }) => (
+                <div className="max-w-[220px] truncate font-medium text-xs text-foreground" title={row.original.raison_sociale}>
+                    {row.original.raison_sociale}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "ville",
+            header: "Ville",
+            cell: ({ row }) => <span className="text-xs">{row.original.ville || "—"}</span>,
+        },
+        {
+            accessorKey: "telephone",
+            header: "Téléphone",
+            cell: ({ row }) => <span className="font-mono text-xs">{row.original.telephone || "—"}</span>,
+        },
+        {
+            accessorKey: "email",
+            header: "E-mail",
+            cell: ({ row }) => (
+                <div className="max-w-[180px] truncate text-xs text-muted-foreground" title={row.original.email || ""}>
+                    {row.original.email || "—"}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "ice",
+            header: "ICE",
+            cell: ({ row }) => <span className="font-mono text-[11px] text-muted-foreground">{row.original.ice || "—"}</span>,
+        },
         {
             id: "actions",
             enableSorting: false,

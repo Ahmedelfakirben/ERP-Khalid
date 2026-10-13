@@ -5,6 +5,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   SortingState,
+  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -22,7 +23,15 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ChevronLeft, ChevronRight, Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, Loader2 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronLeft, ChevronRight, Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, Loader2, SlidersHorizontal } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -38,6 +47,7 @@ interface DataTableProps<TData, TValue> {
   getRowHref?: (data: TData) => string
   onExportExcel?: (filteredData: TData[]) => void
   exportingExcel?: boolean
+  initialColumnVisibility?: VisibilityState
 }
 
 export function DataTable<TData, TValue>({
@@ -52,14 +62,12 @@ export function DataTable<TData, TValue>({
   getRowHref,
   onExportExcel,
   exportingExcel = false,
+  initialColumnVisibility = {},
 }: DataTableProps<TData, TValue>) {
-//...
-// To avoid big replacements, we'll run two replacements.
-
-// First replacement: update prop signature.
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
   const [internalGlobalFilter, setInternalGlobalFilter] = useState("")
 
   const globalFilter = externalGlobalFilter !== undefined ? externalGlobalFilter : internalGlobalFilter
@@ -74,10 +82,12 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
       columnFilters,
+      columnVisibility,
       globalFilter,
     },
     globalFilterFn: (row, columnId, filterValue) => {
@@ -100,28 +110,65 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-4 w-full max-w-full">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}
             value={globalFilter ?? ""}
             onChange={(e) => setGlobalFilter(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9 text-xs rounded-xl"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs rounded-xl">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Colonnes</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 max-h-72 overflow-y-auto rounded-xl">
+              <DropdownMenuLabel className="text-xs font-semibold">Afficher / Masquer</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {table
+                .getAllColumns()
+                .filter((column) => typeof column.accessorFn !== "undefined" || column.id !== "actions")
+                .map((column) => {
+                  const header = column.columnDef.header
+                  const label = typeof header === "string" && header.trim() ? header : column.id
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="text-xs capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    >
+                      {label}
+                    </DropdownMenuCheckboxItem>
+                  )
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {onExportExcel && (
-            <Button variant="outline" onClick={() => onExportExcel(table.getFilteredRowModel().rows.map(r => r.original))} disabled={exportingExcel} className="text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800 border-green-200">
-              {exportingExcel ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
-              Exporter Excel
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onExportExcel(table.getFilteredRowModel().rows.map((r) => r.original))}
+              disabled={exportingExcel}
+              className="h-9 text-xs rounded-xl text-green-700 bg-green-50 hover:bg-green-100 hover:text-green-800 border-green-200"
+            >
+              {exportingExcel ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
+              Excel
             </Button>
           )}
+
           {createUrl && (
-            <Button asChild>
+            <Button asChild size="sm" className="h-9 text-xs font-bold rounded-xl">
               <Link href={createUrl}>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
                 {createLabel}
               </Link>
             </Button>
@@ -129,7 +176,7 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-2xl border border-border/70 bg-card shadow-xs overflow-hidden w-full max-w-full">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

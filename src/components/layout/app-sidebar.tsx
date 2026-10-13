@@ -1,6 +1,7 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { useState, useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
@@ -24,7 +25,9 @@ import {
   LogOut,
   Wallet,
   Layers,
-  Scale,
+  ChevronDown,
+  Receipt,
+  ExternalLink,
 } from "lucide-react"
 import {
   Sidebar,
@@ -40,10 +43,22 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 
-const navigation = [
+interface NavItem {
+  title: string
+  url: string
+  icon: any
+  target?: string
+}
+
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+const navigation: NavGroup[] = [
   {
     label: "Général",
     items: [
@@ -51,17 +66,11 @@ const navigation = [
     ],
   },
   {
-    label: "Données Maîtres",
+    label: "Opérations",
     items: [
-      { title: "Clients", url: "/clients", icon: Users },
-      { title: "Fournisseurs", url: "/fournisseurs", icon: Truck },
-      { title: "Articles", url: "/articles", icon: Package },
-      { title: "Familles", url: "/familles", icon: FolderTree },
-      { title: "Sous-familles", url: "/sous-familles", icon: Layers },
-      { title: "Dépôts", url: "/depots", icon: Warehouse },
-      { title: "Dépenses", url: "/depenses", icon: Wallet },
-      { title: "Salariés", url: "/salaries", icon: UserCog },
-      { title: "Trésoreries", url: "/tresoreries", icon: Landmark },
+      { title: "Point de vente", url: "/pos", icon: MonitorSmartphone, target: "_blank" },
+      { title: "Historique POS", url: "/historique-pos", icon: Receipt },
+      { title: "Stock", url: "/stock", icon: Boxes },
     ],
   },
   {
@@ -87,15 +96,20 @@ const navigation = [
       { title: "État du Client", url: "/finance/creances", icon: Landmark },
       { title: "État du Fournisseur", url: "/finance/dettes", icon: ClipboardCheck },
       { title: "Portefeuille", url: "/finance/portefeuille", icon: Wallet },
-      { title: "Comptabilité", url: "/finance/comptabilite", icon: FileText },
-      { title: "Régularisation & Balance", url: "/finance/regularisation", icon: Scale },
     ],
   },
   {
-    label: "Opérations",
+    label: "Données Maîtres",
     items: [
-      { title: "Point de vente", url: "/pos/ventes", icon: MonitorSmartphone },
-      { title: "Stock", url: "/stock", icon: Boxes },
+      { title: "Clients", url: "/clients", icon: Users },
+      { title: "Fournisseurs", url: "/fournisseurs", icon: Truck },
+      { title: "Articles", url: "/articles", icon: Package },
+      { title: "Familles", url: "/familles", icon: FolderTree },
+      { title: "Sous-familles", url: "/sous-familles", icon: Layers },
+      { title: "Dépôts", url: "/depots", icon: Warehouse },
+      { title: "Dépenses", url: "/depenses", icon: Wallet },
+      { title: "Salariés", url: "/salaries", icon: UserCog },
+      { title: "Trésoreries", url: "/tresoreries", icon: Landmark },
     ],
   },
 ]
@@ -104,6 +118,35 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
   const router = useRouter()
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    "Général": false,
+    "Opérations": false,
+    "Vente": false,
+    "Achat": false,
+    "Finance": false,
+    "Données Maîtres": false,
+  })
+
+  // Load persisted collapse state on client mount only if user previously interacted
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("khalid_sidebar_groups")
+      if (saved) {
+        setOpenGroups(JSON.parse(saved))
+      }
+    } catch {}
+  }, [])
+
+  const toggleGroup = (label: string) => {
+    setOpenGroups(prev => {
+      const updated = { ...prev, [label]: !prev[label] }
+      try {
+        localStorage.setItem("khalid_sidebar_groups", JSON.stringify(updated))
+      } catch {}
+      return updated
+    })
+  }
 
   async function handleLogout() {
     const supabase = createClient()
@@ -122,42 +165,75 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
-          {/* Logo added */}
-          {/* Logo Placeholder - Professional Icon */}
           <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-orange-600 dark:bg-orange-500 shadow-lg shadow-orange-500/20">
             <span className="text-white font-black text-xl">A</span>
           </div>
-          <h1 className="text-xl font-bold text-accent">
-            Digital ALT
-          </h1>
+          <div>
+            <h1 className="text-lg font-bold text-accent leading-tight">
+              Digital ALT
+            </h1>
+            <p className="text-xs text-muted-foreground">Gestion Commerciale</p>
+          </div>
         </Link>
-        <p className="text-xs text-muted-foreground">Gestion Commerciale</p>
       </SidebarHeader>
 
       <SidebarContent>
-        {navigation.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.url || pathname.startsWith(item.url + "/")}
-                      onClick={handleLinkClick}
-                    >
-                      <Link href={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navigation.map((group) => {
+          const isOpen = Boolean(openGroups[group.label])
+          const hasActiveItem = group.items.some(
+            item => pathname === item.url || pathname.startsWith(item.url + "/")
+          )
+
+          return (
+            <SidebarGroup key={group.label} className="py-1">
+              <SidebarGroupLabel asChild>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.label)}
+                  className="flex w-full items-center justify-between cursor-pointer rounded-md px-2 py-1.5 text-xs font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors select-none group/header"
+                >
+                  <span className={cn(hasActiveItem && "text-primary font-bold")}>
+                    {group.label}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform duration-200 text-sidebar-foreground/50 group-hover/header:text-sidebar-foreground",
+                      !isOpen && "-rotate-90"
+                    )}
+                  />
+                </button>
+              </SidebarGroupLabel>
+
+              {isOpen && (
+                <SidebarGroupContent className="animate-in fade-in-50 duration-150">
+                  <SidebarMenu>
+                    {group.items.map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === item.url || (item.target !== "_blank" && pathname.startsWith(item.url + "/"))}
+                          onClick={item.target === "_blank" ? undefined : handleLinkClick}
+                        >
+                          <Link
+                            href={item.url}
+                            target={item.target}
+                            rel={item.target === "_blank" ? "noopener noreferrer" : undefined}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span className="flex-1">{item.title}</span>
+                            {item.target === "_blank" && (
+                              <ExternalLink className="h-3 w-3 text-muted-foreground/60 ml-auto shrink-0" />
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              )}
+            </SidebarGroup>
+          )
+        })}
       </SidebarContent>
 
       <SidebarSeparator />

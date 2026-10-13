@@ -86,7 +86,6 @@ export default function DepotDetailPage() {
                     <CardContent className="space-y-3">
                         <div><span className="text-sm text-muted-foreground">Adresse</span><p className="font-medium">{depot.adresse || "—"}</p></div>
                         <div><span className="text-sm text-muted-foreground">Responsable</span><p className="font-medium">{responsable ? `${responsable.prenom} ${responsable.nom}` : "—"}</p></div>
-                        <div><span className="text-sm text-muted-foreground">Type d&apos;affichage</span><Badge variant={fiscalMode ? "default" : "outline"} className={fiscalMode ? "bg-amber-500" : ""}>{fiscalMode ? "Optimisé Fiscal (TVA)" : "Vue Globale"}</Badge></div>
                     </CardContent>
                 </Card>
             </div>

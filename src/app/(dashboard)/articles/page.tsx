@@ -27,12 +27,9 @@ import {
 import Link from "next/link"
 import { toast } from "sonner"
 import { LoadingScreen } from "@/components/ui/loading-screen"
-import { useFiscalMode } from "@/providers/fiscal-mode-context"
-
 export default function ArticlesPage() {
     const { data: articles, isLoading } = useArticles()
     const deleteArticle = useDeleteArticle()
-    const { fiscalMode } = useFiscalMode()
 
     const handleDelete = async (id: string) => {
         try {
@@ -44,14 +41,65 @@ export default function ArticlesPage() {
     }
 
     const columns: ColumnDef<Article>[] = [
-        { accessorKey: "code", header: "Code" },
-        { accessorKey: "reference", header: "Réf." },
-        { accessorKey: "designation", header: "Désignation" },
         {
-            accessorFn: (row) => (row as any).famille?.libelle,
+            accessorKey: "image_url",
+            header: "Image",
+            enableSorting: false,
+            cell: ({ row }) => {
+                const img = row.original.image_url
+                return (
+                    <div className="h-9 w-9 rounded-lg border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0">
+                        {img ? (
+                            <img src={img} alt={row.original.designation} className="h-full w-full object-cover" />
+                        ) : (
+                            <Package className="h-4 w-4 text-muted-foreground/60" />
+                        )}
+                    </div>
+                )
+            },
+        },
+        {
+            accessorKey: "code",
+            header: "Code",
+            cell: ({ row }) => (
+                <div className="flex flex-col">
+                    <span className="font-bold text-xs text-foreground font-mono">{row.original.code}</span>
+                    {row.original.reference && row.original.reference !== row.original.code && (
+                        <span className="text-[10px] text-muted-foreground">Réf: {row.original.reference}</span>
+                    )}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "reference",
+            header: "Réf.",
+            cell: ({ row }) => row.original.reference || "—",
+        },
+        {
+            accessorKey: "designation",
+            header: "Désignation",
+            cell: ({ row }) => (
+                <div className="max-w-[200px] lg:max-w-[280px]" title={row.original.designation}>
+                    <p className="font-semibold text-xs text-foreground truncate">{row.original.designation}</p>
+                </div>
+            ),
+        },
+        {
+            accessorFn: (row) => (row as any).famille?.libelle || "—",
             id: "famille",
-            header: "Famille",
-            cell: ({ row }) => (row.original as any).famille?.libelle || "—",
+            header: "Catégorie",
+            cell: ({ row }) => {
+                const fam = (row.original as any).famille?.libelle
+                const sousFam = (row.original as any).sous_famille?.libelle
+                return (
+                    <div className="flex flex-col max-w-[140px]">
+                        <span className="font-medium text-xs text-foreground truncate">{fam || "—"}</span>
+                        {sousFam && (
+                            <span className="text-[10px] text-muted-foreground truncate">{sousFam}</span>
+                        )}
+                    </div>
+                )
+            },
         },
         {
             accessorFn: (row) => (row as any).sous_famille?.libelle,
@@ -61,44 +109,56 @@ export default function ArticlesPage() {
         },
         {
             accessorKey: "prix_achat",
-            header: "Prix achat",
-            cell: ({ row }) => `${Number(row.original.prix_achat).toFixed(2)} DH`,
-        },
-        {
-            accessorKey: "stock_actuel",
-            header: fiscalMode ? "Stock [F]" : "Stock",
-            cell: ({ row }) => {
-                // Determine which stock to show based on fiscal mode
-                const stock = fiscalMode 
-                    ? (row.original as any).quantite_fiscale ?? 0 
-                    : (row.original as any).stock_actuel ?? 0
-                
-                return (
-                    <div className={`font-bold flex items-center gap-1.5 ${stock <= 0 ? "text-destructive" : stock <= (row.original.seuil_alerte || 0) ? "text-orange-500" : ""}`}>
-                        {fiscalMode && <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-amber-500/50 text-amber-600 bg-amber-500/5">F</Badge>}
-                        {stock}
-                    </div>
-                )
-            },
+            header: "P. Achat",
+            cell: ({ row }) => (
+                <span className="font-mono text-xs text-muted-foreground whitespace-nowrap">
+                    {Number(row.original.prix_achat).toFixed(2)} DH
+                </span>
+            ),
         },
         {
             accessorKey: "prix_vente",
-            header: "Prix vente",
-            cell: ({ row }) => `${Number(row.original.prix_vente).toFixed(2)} DH`,
+            header: "P. Vente",
+            cell: ({ row }) => (
+                <span className="font-mono text-xs font-bold text-foreground whitespace-nowrap">
+                    {Number(row.original.prix_vente).toFixed(2)} DH
+                </span>
+            ),
         },
         {
-            accessorKey: "tva",
-            header: "TVA",
-            cell: ({ row }) => `${row.original.tva}%`,
+            accessorKey: "stock_actuel",
+            header: "Stock",
+            cell: ({ row }) => {
+                const stock = (row.original as any).stock_actuel ?? 0
+                const seuil = row.original.seuil_alerte || 0
+                const isOutOfStock = stock <= 0
+                const isLowStock = stock <= seuil && !isOutOfStock
+
+                return (
+                    <Badge
+                        variant="outline"
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${
+                            isOutOfStock
+                                ? "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/40 dark:border-red-800 dark:text-red-400"
+                                : isLowStock
+                                ? "border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400"
+                                : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400"
+                        }`}
+                    >
+                        {stock} u.
+                    </Badge>
+                )
+            },
         },
         {
             accessorFn: (row) => row.actif ? "Actif" : "Inactif",
             id: "actif",
             header: "Statut",
             cell: ({ row }) => (
-                <Badge variant={row.original.actif ? "default" : "secondary"}>
+                <span className={`inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${row.original.actif ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${row.original.actif ? "bg-emerald-500" : "bg-muted-foreground"}`} />
                     {row.original.actif ? "Actif" : "Inactif"}
-                </Badge>
+                </span>
             ),
         },
         {
@@ -111,7 +171,7 @@ export default function ArticlesPage() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 w-8 p-0">
-                                    < MoreHorizontal className="h-4 w-4" />
+                                    <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -162,20 +222,13 @@ export default function ArticlesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h2 className={`text-3xl font-bold tracking-tight ${fiscalMode ? "text-amber-500" : ""}`}>
-                        {fiscalMode ? "Catalogue Facturé" : "Articles"}
-                    </h2>
+                    <h2 className="text-3xl font-bold tracking-tight">Articles</h2>
                     <p className="text-muted-foreground">
-                        {fiscalMode ? "Vues des stocks et tarifs facturés avec TVA" : "Gérez vos articles et produits globaux"}
+                        Gérez vos articles et votre catalogue de produits
                     </p>
                 </div>
-                {fiscalMode && (
-                    <Badge variant="outline" className="bg-amber-500/10 border-amber-500/50 text-amber-600 px-3 py-1 animate-pulse">
-                        Mode Fiscal Actif
-                    </Badge>
-                )}
             </div>
             <DataTable
                 columns={columns}
@@ -184,6 +237,10 @@ export default function ArticlesPage() {
                 createUrl="/articles/nouveau"
                 createLabel="Nouvel article"
                 getRowHref={(row) => `/articles/${row.id}`}
+                initialColumnVisibility={{
+                    reference: false,
+                    sous_famille: false,
+                }}
             />
         </div>
     )

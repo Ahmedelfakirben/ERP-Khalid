@@ -142,20 +142,6 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="inclure_tva"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <div className="space-y-0.5">
-                    <FormLabel>Inclure TVA</FormLabel>
-                  </div>
-                  <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
           </CardContent>
         </Card>
 
@@ -169,7 +155,6 @@ export function DevisForm({ defaultValues, onSubmit, isLoading }: DevisFormProps
               watch={form.watch}
               setValue={form.setValue}
               articles={articles || []}
-              inclureTva={form.watch("inclure_tva")}
               docType="devis"
             />
             {form.formState.errors.lignes && (

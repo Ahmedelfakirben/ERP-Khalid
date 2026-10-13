@@ -16,14 +16,10 @@ export function FiscalModeProvider({ children }: { children: React.ReactNode }) 
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  // Load from localStorage on mount
+  // Ensure unified standard mode
   useEffect(() => {
-    const saved = localStorage.getItem("fiscal_mode")
-    const isFiscal = saved === "true"
-    if (isFiscal) {
-      setFiscalMode(true)
-      document.documentElement.classList.add("fiscal-mode")
-    }
+    localStorage.removeItem("fiscal_mode")
+    document.documentElement.classList.remove("fiscal-mode")
   }, [])
 
   // Sync URL for Server Components (like Dashboard)

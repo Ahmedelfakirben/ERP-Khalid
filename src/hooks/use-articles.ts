@@ -75,6 +75,15 @@ export function useCreateArticle() {
 
             const createdArticle = article as Article // Cast to ensure type safety
 
+            // Auto-index visual signature if image_url is present
+            if (articleData.image_url) {
+                fetch("/api/articles/signature", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: articleData.image_url, article_id: (article as any).id }),
+                }).catch(() => {})
+            }
+
             // 2. Si stock initial, ajouter mouvement via RPC pour mise à jour cohérente
             if (stock_initial && stock_initial > 0 && depot_id) {
                 const { error: stockError } = await (supabase.rpc as any)("update_stock", {
@@ -117,6 +126,15 @@ export function useUpdateArticle() {
                 .select()
                 .single()
             if (error) throw error
+
+            // Auto-index visual signature if image_url is present
+            if (articleData.image_url) {
+                fetch("/api/articles/signature", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: articleData.image_url, article_id: id }),
+                }).catch(() => {})
+            }
 
             // 2. Si ajustement stock demandé
             if (stock_initial && stock_initial > 0 && depot_id) {

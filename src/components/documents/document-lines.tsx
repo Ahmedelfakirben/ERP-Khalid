@@ -265,28 +265,6 @@ export function DocumentLines({
                 <Camera className="h-5 w-5" />
             </Button>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-            {!isPurchase && (
-                <div className={cn(
-                    "flex items-center space-x-2 px-4 py-2 rounded-lg border shadow-sm transition-colors",
-                    isRegularisation ? "bg-red-50 border-red-200" : "bg-background"
-                )}>
-                    <Switch 
-                        id="regularisation" 
-                        checked={isRegularisation} 
-                        onCheckedChange={(val) => setValue("is_regularisation", val)}
-                        className="data-[state=checked]:bg-red-600"
-                    />
-                    <Label htmlFor="regularisation" className={cn(
-                        "text-xs font-black uppercase tracking-wider cursor-pointer",
-                        isRegularisation ? "text-red-700" : "text-muted-foreground"
-                    )}>
-                        Régularisation & Balance
-                    </Label>
-                </div>
-            )}
-        </div>
       </div>
 
       <div className="rounded-xl border bg-card shadow-lg overflow-hidden border-muted-foreground/10">
@@ -294,11 +272,10 @@ export function DocumentLines({
           <TableHeader className="bg-muted/80 h-12">
             <TableRow>
               <TableHead className="w-[250px] text-[11px] font-black uppercase tracking-widest px-6">Référence / Code</TableHead>
-              <TableHead className="text-[11px] font-black uppercase tracking-widest">Désignation & Traçabilidad</TableHead>
+              <TableHead className="text-[11px] font-black uppercase tracking-widest">Désignation & Traçabilité</TableHead>
               <TableHead className="w-[100px] text-center text-[11px] font-black uppercase tracking-widest">Qté</TableHead>
               <TableHead className="w-[140px] text-[11px] font-black uppercase tracking-widest">Prix unit.</TableHead>
-              {inclureTva && <TableHead className="w-[80px] text-[11px] font-black uppercase tracking-widest">TVA</TableHead>}
-              <TableHead className="w-[140px] text-right text-[11px] font-black uppercase tracking-widest pr-6">{inclureTva ? "Total HT" : "Total"}</TableHead>
+              <TableHead className="w-[140px] text-right text-[11px] font-black uppercase tracking-widest pr-6">Total</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -490,16 +467,6 @@ export function DocumentLines({
                       onChange={(e) => handlePrixChange(index, parseFloat(e.target.value) || 0)}
                     />
                   </TableCell>
-                  {inclureTva && (
-                    <TableCell className="align-top py-5">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        className="h-10 text-center bg-muted/30 font-bold"
-                        {...control.register(`${fieldName}.${index}.tva`, { valueAsNumber: true })}
-                      />
-                    </TableCell>
-                  )}
                   <TableCell className="align-top py-5 text-right font-black text-base text-foreground/80 pt-6 pr-6">
                     {montantHTRow.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}<span className="text-[10px] ml-1 opacity-50">DH</span>
                   </TableCell>
@@ -519,32 +486,12 @@ export function DocumentLines({
             })}
           </TableBody>
           <TableFooter className="bg-muted/30 border-t-2">
-            <TableRow>
-              <TableCell colSpan={inclureTva ? 5 : 4} className="text-right font-black text-muted-foreground uppercase text-[10px] tracking-[0.2em] py-4">
-                {inclureTva ? "Total HT" : "Montant Total"}
-              </TableCell>
-              <TableCell className="text-right font-black text-lg py-4 pr-6">
-                {totalHT.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-              </TableCell>
-              <TableCell />
-            </TableRow>
-            {inclureTva && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-right font-black text-muted-foreground uppercase text-[10px] tracking-[0.2em] py-4">
-                  TVA
-                </TableCell>
-                <TableCell className="text-right font-black text-lg py-4 pr-6">
-                  {totalTVA.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
-                </TableCell>
-                <TableCell />
-              </TableRow>
-            )}
             <TableRow className="bg-orange-500/5 hover:bg-orange-500/5">
-              <TableCell colSpan={inclureTva ? 5 : 4} className="text-right font-black text-orange-600 uppercase text-[11px] tracking-[0.3em] py-6">
-                Net à Payer
+              <TableCell colSpan={4} className="text-right font-black text-orange-600 uppercase text-[11px] tracking-[0.3em] py-6">
+                Total Net
               </TableCell>
               <TableCell className="text-right font-black text-2xl text-orange-600 italic py-6 pr-6">
-                {totalTTC.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
+                {totalHT.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} DH
               </TableCell>
               <TableCell />
             </TableRow>

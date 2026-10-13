@@ -108,7 +108,7 @@ export default function EtatGeneralPage() {
             case "bon_achat": return `/bon-achats/${id}`
             case "bon_retour": return `/bon-retours/${id}`
             case "bon_retour_achat": return `/bon-retour-achats/${id}`
-            case "vente_pos": return `/pos/ventes/${id}`
+            case "vente_pos": return `/historique-pos/${id}`
             case "devis": return `/devis/${id}`
             case "bon_commande": return `/bon-commandes/${id}`
             default: return null

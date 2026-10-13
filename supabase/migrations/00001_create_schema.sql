@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Type ENUM pour les rôles
 CREATE TYPE user_role AS ENUM ('admin', 'gerant', 'commercial', 'magasinier');
 CREATE TYPE tresorerie_type AS ENUM ('caisse', 'banque');
-CREATE TYPE mode_paiement AS ENUM ('especes', 'carte', 'cheque', 'virement');
+CREATE TYPE mode_paiement AS ENUM ('especes', 'carte', 'cheque', 'virement', 'effet');
 CREATE TYPE mouvement_type AS ENUM ('entree', 'sortie');
 CREATE TYPE devis_statut AS ENUM ('brouillon', 'envoye', 'accepte', 'refuse', 'expire');
 CREATE TYPE document_statut AS ENUM ('brouillon', 'valide', 'annule');
@@ -98,6 +98,8 @@ CREATE TABLE familles_articles (
 CREATE TABLE articles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code VARCHAR(30) NOT NULL UNIQUE,
+  reference VARCHAR(100),
+  code_barre VARCHAR(100),
   designation VARCHAR(255) NOT NULL,
   famille_id UUID REFERENCES familles_articles(id) ON DELETE SET NULL,
   prix_achat DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -106,6 +108,7 @@ CREATE TABLE articles (
   unite VARCHAR(20) NOT NULL DEFAULT 'Unité',
   seuil_alerte INTEGER NOT NULL DEFAULT 10,
   actif BOOLEAN NOT NULL DEFAULT true,
+  image_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -392,6 +395,8 @@ CREATE TABLE ventes_pos (
   montant_ht DECIMAL(14,2) NOT NULL DEFAULT 0,
   montant_tva DECIMAL(14,2) NOT NULL DEFAULT 0,
   montant_ttc DECIMAL(14,2) NOT NULL DEFAULT 0,
+  remise DECIMAL(14,2) NOT NULL DEFAULT 0,
+  inclure_tva BOOLEAN NOT NULL DEFAULT false,
   mode_paiement mode_paiement NOT NULL DEFAULT 'especes',
   depot_id UUID NOT NULL REFERENCES depots(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

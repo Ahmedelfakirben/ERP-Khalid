@@ -78,6 +78,8 @@ export interface Article {
   unite: string
   seuil_alerte: number
   actif: boolean
+  image_url?: string | null
+  image_signature?: string | null
   created_at: string
   updated_at: string
   famille?: FamilleArticle
@@ -360,6 +362,10 @@ export interface VentePos {
   mode_paiement: ModePaiement
   depot_id: string
   created_at: string
+  montant_recu?: number | null
+  monnaie_rendue?: number | null
+  remise?: number | null
+  inclure_tva?: boolean | null
   client?: Client
   commercial?: Profile
   tresorerie?: Tresorerie
@@ -377,6 +383,38 @@ export interface VentePosLigne {
   tva: number
   montant_ht: number
   codes_articles?: string[] | null
+}
+
+export interface RetourPos {
+  id: string
+  numero: string
+  date: string
+  vente_pos_id?: string | null
+  client_id?: string | null
+  commercial_id: string
+  depot_id: string
+  tresorerie_id: string
+  montant_total: number
+  mode_remboursement: ModePaiement
+  motif?: string | null
+  created_at: string
+  client?: Client
+  commercial?: Profile
+  tresorerie?: Tresorerie
+  depot?: Depot
+  vente_pos?: VentePos
+  lignes?: RetourPosLigne[]
+}
+
+export interface RetourPosLigne {
+  id: string
+  retour_pos_id: string
+  article_id: string
+  designation: string
+  quantite: number
+  prix_unitaire: number
+  montant_total: number
+  article?: Article
 }
 
 export interface MouvementStock {
@@ -421,10 +459,33 @@ export interface Paiement {
   tresorerie?: Tresorerie
 }
 
+export interface Parametre {
+  cle: string
+  valeur: string | null
+  description?: string | null
+  updated_at?: string
+}
+
 // Supabase Database type (simplified for SSR client)
 export interface Database {
   public: {
     Tables: {
+      parametres: {
+        Row: Parametre
+        Insert: {
+          cle: string
+          valeur?: string | null
+          description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cle?: string
+          valeur?: string | null
+          description?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: { Row: Profile; Insert: Omit<Profile, "id" | "created_at">; Update: Partial<Profile> }
       clients: { Row: Client; Insert: Omit<Client, "id" | "created_at" | "updated_at">; Update: Partial<Client> }
       fournisseurs: { Row: Fournisseur; Insert: Omit<Fournisseur, "id" | "created_at" | "updated_at">; Update: Partial<Fournisseur> }
@@ -450,6 +511,8 @@ export interface Database {
       bon_retour_achat_lignes: { Row: BonRetourAchatLigne; Insert: Omit<BonRetourAchatLigne, "id">; Update: Partial<BonRetourAchatLigne> }
       ventes_pos: { Row: VentePos; Insert: Omit<VentePos, "id" | "created_at" | "client" | "commercial" | "tresorerie" | "depot" | "lignes">; Update: Partial<VentePos> }
       vente_pos_lignes: { Row: VentePosLigne; Insert: Omit<VentePosLigne, "id">; Update: Partial<VentePosLigne> }
+      retours_pos: { Row: RetourPos; Insert: Omit<RetourPos, "id" | "created_at" | "client" | "commercial" | "tresorerie" | "depot" | "vente_pos" | "lignes">; Update: Partial<RetourPos> }
+      retour_pos_lignes: { Row: RetourPosLigne; Insert: Omit<RetourPosLigne, "id" | "article">; Update: Partial<RetourPosLigne> }
       mouvements_stock: { Row: MouvementStock; Insert: Omit<MouvementStock, "id" | "created_at" | "article" | "depot">; Update: Partial<MouvementStock> }
       mouvements_tresorerie: { Row: MouvementTresorerie; Insert: Omit<MouvementTresorerie, "id" | "created_at" | "tresorerie">; Update: Partial<MouvementTresorerie> }
       paiements: { Row: Paiement; Insert: Omit<Paiement, "id" | "created_at" | "tresorerie">; Update: Partial<Paiement> }
