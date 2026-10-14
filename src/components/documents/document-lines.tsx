@@ -51,6 +51,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { BarcodeScanner } from "@/components/ui/barcode-scanner"
 import { Camera } from "lucide-react"
+import { CameraProductScanner } from "@/components/pos/camera-product-scanner"
 
 interface DocumentLinesProps {
   control: Control<any>
@@ -71,8 +72,8 @@ export function DocumentLines({
   inclureTva = false,
   docType,
 }: DocumentLinesProps) {
-  const isPurchase = docType === "achat" || docType === "bon_commande" || docType === "bon_achat"
-  const isSale = docType === "bon_livraison" || docType === "devis" || docType === "vente_pos"
+  const isPurchase = docType === "achat" || docType === "bon_commande" || docType === "bon_achat" || docType === "bon_retour_achat"
+  const isSale = docType === "bon_livraison" || docType === "devis" || docType === "vente_pos" || docType === "bon_retour"
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -85,11 +86,12 @@ export function DocumentLines({
   
   const isRegularisation = watch("is_regularisation") || false
 
-  const [quickScanCode, setQuickScanCode] = React.useState("")
-  const [isScanning, setIsScanning] = React.useState(false)
   const [isScannerOpen, setIsScannerOpen] = React.useState(false)
   const [scanningRowIndex, setScanningRowIndex] = React.useState<number | null>(null)
-  const quickScanRef = React.useRef<HTMLInputElement>(null)
+
+  // Photo scanner state
+  const [isPhotoScannerOpen, setIsPhotoScannerOpen] = React.useState(false)
+  const [photoTargetRowIndex, setPhotoTargetRowIndex] = React.useState<number | null>(null)
 
   const supabase = createClient()
   const lignes = watch(fieldName) || []
@@ -104,68 +106,62 @@ export function DocumentLines({
   }, [articles, isPurchase, isRegularisation, isSale])
 
   // Total calculations
-  const totalTTC = lignes.reduce(
-    (sum: number, l: any) => sum + (l.quantite || 0) * (l.prix_unitaire || 0),
-    0
-  )
+  const totalTTC = lignes.reduce((sum: number, l: any) => {
+    const lineTotal = typeof l.montant_ht === "number" && !isNaN(l.montant_ht) && l.montant_ht > 0
+      ? l.montant_ht
+      : (l.quantite || 0) * (l.prix_unitaire || 0)
+    return sum + lineTotal
+  }, 0)
   const totalHTCalc = inclureTva 
-    ? lignes.reduce((s: number, l: any) => s + ((l.quantite || 0) * (l.prix_unitaire || 0)) / (1 + (l.tva || 0) / 100), 0)
+    ? lignes.reduce((s: number, l: any) => {
+        const lineTotal = typeof l.montant_ht === "number" && !isNaN(l.montant_ht) && l.montant_ht > 0
+          ? l.montant_ht
+          : (l.quantite || 0) * (l.prix_unitaire || 0)
+        return s + (lineTotal / (1 + (l.tva || 0) / 100))
+      }, 0)
     : totalTTC
   const totalTVA = totalTTC - totalHTCalc
   const totalHT = totalHTCalc
 
-  async function handleQuickScan(code: string) {
-    if (!code) return
-    setIsScanning(true)
-    try {
-      // Find article by custom RPC that handles any code type
-      const { data, error } = await supabase.rpc("find_article_by_code", { p_search_code: code } as any)
-      if (error) throw error
-      
-      const result = (Array.isArray(data) ? data[0] : data) as any
-      if (result) {
-        // Enforce stock check for sales NOT in regularization mode
-        const stockActuel = result.stock_actuel || 0
-        if (isSale && !isRegularisation && stockActuel <= 0) {
-            toast.error(`Stock insuffisant pour ${result.designation}. Activez le mode Régularisation para forzar.`)
-            return
-        }
-
-        // Find if article already in lines to increment qty instead of new line
-        const existingIndex = lignes.findIndex((l: any) => l.article_id === result.article_id)
-        if (existingIndex !== -1) {
-            const currentQty = watch(`${fieldName}.${existingIndex}.quantite`) || 0
-            
-            // Re-check stock for the new total quantity
-            if (isSale && !isRegularisation && (currentQty + 1) > stockActuel) {
-                toast.error(`Stock insuffisant (${stockActuel}) para añadir más de ${result.designation}.`)
-                return
-            }
-
-            handleQtyChange(existingIndex, currentQty + 1)
-            toast.success(`Ajouté: ${result.designation} (+1)`)
-        } else {
-            append({
-                article_id: result.article_id,
-                designation: result.designation,
-                quantite: 1,
-                prix_unitaire: result.prix_vente,
-                tva: result.tva,
-                montant_ht: result.prix_vente,
-                codes_articles: result.found_via === 'traceability' ? [code] : [],
-                ordre: fields.length,
-            })
-            toast.success(`Cargado: ${result.designation}`)
-        }
-        setQuickScanCode("")
-      } else {
-        toast.error("Código no reconocido en la base de datos.")
-      }
-    } catch (e) {
-      toast.error("Error al buscar el código.")
-    } finally {
-      setIsScanning(false)
+  function handlePhotoDetected(article: Article) {
+    // If target row was specified
+    if (photoTargetRowIndex !== null && photoTargetRowIndex < fields.length) {
+      handleArticleSelect(photoTargetRowIndex, article.id)
+      toast.success(`Produit sélectionné : ${article.designation}`)
+      setPhotoTargetRowIndex(null)
+      setIsPhotoScannerOpen(false)
+      return
     }
+
+    // Check if an empty line already exists (no article_id and empty designation)
+    const emptyRowIndex = lignes.findIndex((l: any) => !l.article_id && (!l.designation || l.designation.trim() === ""))
+    if (emptyRowIndex !== -1) {
+      handleArticleSelect(emptyRowIndex, article.id)
+      toast.success(`Produit sélectionné : ${article.designation}`)
+      setIsPhotoScannerOpen(false)
+      return
+    }
+
+    // Otherwise append new line
+    const stockActuel = (article as any).stock_actuel || 0
+    if (isSale && !isRegularisation && stockActuel <= 0) {
+      toast.error(`Stock insuffisant pour ${article.designation}. Activez le mode Régularisation si nécessaire.`)
+      return
+    }
+
+    const unitPrice = isPurchase ? (article.prix_achat || 0) : (article.prix_vente || 0)
+    append({
+      article_id: article.id,
+      designation: article.designation,
+      quantite: 1,
+      prix_unitaire: unitPrice,
+      tva: article.tva ?? 20,
+      montant_ht: unitPrice,
+      codes_articles: [],
+      ordre: fields.length,
+    })
+    toast.success(`Article ajouté par photo : ${article.designation}`)
+    setIsPhotoScannerOpen(false)
   }
 
   function handleArticleSelect(index: number, articleId: string) {
@@ -173,16 +169,17 @@ export function DocumentLines({
     if (article) {
       const stockActuel = (article as any).stock_actuel || 0
       if (isSale && !isRegularisation && stockActuel <= 0) {
-          toast.error("Cet article n'est pas en stock. Activez le mode Régularisation if necessary.")
+          toast.error("Cet article n'est pas en stock. Activez le mode Régularisation si nécessaire.")
           return
       }
 
+      const unitPrice = isPurchase ? (article.prix_achat || 0) : (article.prix_vente || 0)
       setValue(`${fieldName}.${index}.article_id`, article.id)
       setValue(`${fieldName}.${index}.designation`, article.designation)
-      setValue(`${fieldName}.${index}.prix_unitaire`, article.prix_vente)
-      setValue(`${fieldName}.${index}.tva`, article.tva)
+      setValue(`${fieldName}.${index}.prix_unitaire`, unitPrice)
+      setValue(`${fieldName}.${index}.tva`, article.tva ?? 20)
       const qty = watch(`${fieldName}.${index}.quantite`) || 1
-      setValue(`${fieldName}.${index}.montant_ht`, qty * article.prix_vente)
+      setValue(`${fieldName}.${index}.montant_ht`, Number((qty * unitPrice).toFixed(2)))
       setValue(`${fieldName}.${index}.codes_articles`, [])
     }
   }
@@ -193,23 +190,32 @@ export function DocumentLines({
     if (article && isSale && !isRegularisation) {
         const stockActuel = (article as any).stock_actuel || 0
         if (qty > stockActuel) {
-            toast.error(`Stock limité à ${stockActuel} unidades.`)
+            toast.error(`Stock limité à ${stockActuel} unités.`)
             setValue(`${fieldName}.${index}.quantite`, stockActuel)
             const prix = watch(`${fieldName}.${index}.prix_unitaire`) || 0
-            setValue(`${fieldName}.${index}.montant_ht`, stockActuel * prix)
+            setValue(`${fieldName}.${index}.montant_ht`, Number((stockActuel * prix).toFixed(2)))
             return
         }
     }
 
     setValue(`${fieldName}.${index}.quantite`, qty)
     const prix = watch(`${fieldName}.${index}.prix_unitaire`) || 0
-    setValue(`${fieldName}.${index}.montant_ht`, qty * prix)
+    setValue(`${fieldName}.${index}.montant_ht`, Number((qty * prix).toFixed(2)))
   }
 
   function handlePrixChange(index: number, prix: number) {
     setValue(`${fieldName}.${index}.prix_unitaire`, prix)
     const qty = watch(`${fieldName}.${index}.quantite`) || 0
-    setValue(`${fieldName}.${index}.montant_ht`, qty * prix)
+    setValue(`${fieldName}.${index}.montant_ht`, Number((qty * prix).toFixed(2)))
+  }
+
+  function handleTotalChange(index: number, total: number) {
+    setValue(`${fieldName}.${index}.montant_ht`, total)
+    const qty = watch(`${fieldName}.${index}.quantite`) || 1
+    if (qty > 0) {
+      const unitPrice = Number((total / qty).toFixed(2))
+      setValue(`${fieldName}.${index}.prix_unitaire`, unitPrice)
+    }
   }
 
   function addLine() {
@@ -238,32 +244,34 @@ export function DocumentLines({
 
   return (
     <div className="space-y-4">
-      {/* Search & Actions Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 bg-muted/30 p-4 rounded-xl border-2 border-dashed border-muted-foreground/10">
-        <div className="relative flex-1 group flex items-center gap-2">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-orange-600 transition-colors" />
-                <Input 
-                    ref={quickScanRef}
-                    placeholder="Escaneo Rápido (Código, IMEI, SN...)" 
-                    className="pl-10 h-11 bg-background border-none shadow-inner ring-offset-background focus-visible:ring-2 focus-visible:ring-orange-500 font-bold"
-                    value={quickScanCode}
-                    onChange={(e) => setQuickScanCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleQuickScan(quickScanCode))}
-                    disabled={isScanning}
-                />
-                {isScanning && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-orange-600" />}
-            </div>
-            
-            <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-11 w-11 shrink-0 rounded-xl border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all shadow-sm"
-                onClick={() => setIsScannerOpen(true)}
-            >
-                <Camera className="h-5 w-5" />
-            </Button>
+      {/* Actions Bar: Photo Recognition & Add Line */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/20 p-3 sm:p-4 rounded-2xl border border-border/60">
+        <div className="flex items-center gap-2.5">
+          <Button
+            type="button"
+            onClick={() => {
+              setPhotoTargetRowIndex(null)
+              setIsPhotoScannerOpen(true)
+            }}
+            className="h-10 px-4 rounded-xl text-xs font-bold gap-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-md shadow-orange-500/20 cursor-pointer transition-transform active:scale-[0.99]"
+          >
+            <Camera className="h-4 w-4" />
+            <span>Identifier par Photo (IA)</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addLine}
+            className="h-10 px-4 rounded-xl text-xs font-semibold gap-1.5 cursor-pointer hover:bg-muted"
+          >
+            <Plus className="h-4 w-4 text-orange-500" />
+            <span>Ajouter une ligne</span>
+          </Button>
+        </div>
+
+        <div className="text-xs text-muted-foreground font-medium">
+          <span className="font-bold text-foreground">{fields.length}</span> {fields.length <= 1 ? "article" : "articles"} sur le document
         </div>
       </div>
 
@@ -372,10 +380,11 @@ export function DocumentLines({
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all flex"
+                                className="h-10 w-10 shrink-0 border-2 border-orange-500/20 text-orange-600 hover:bg-orange-500 hover:text-white transition-all flex cursor-pointer"
+                                title="Identifier ce produit par photo"
                                 onClick={() => {
-                                    setScanningRowIndex(index)
-                                    setIsScannerOpen(true)
+                                    setPhotoTargetRowIndex(index)
+                                    setIsPhotoScannerOpen(true)
                                 }}
                             >
                                 <Camera className="h-4 w-4" />
@@ -452,23 +461,48 @@ export function DocumentLines({
                   <TableCell className="align-top py-5">
                     <Input
                       type="number"
-                      step="0.01"
-                      className="h-10 text-center font-black text-base"
-                      value={ligne.quantite || ""}
+                      step="any"
+                      min="0.01"
+                      className="h-10 text-center font-black text-sm focus-visible:ring-orange-500"
+                      value={ligne.quantite ?? ""}
                       onChange={(e) => handleQtyChange(index, parseFloat(e.target.value) || 0)}
                     />
                   </TableCell>
                   <TableCell className="align-top py-5">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="h-10 font-bold"
-                      value={ligne.prix_unitaire || ""}
-                      onChange={(e) => handlePrixChange(index, parseFloat(e.target.value) || 0)}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0.00"
+                        className="h-10 font-bold text-right pr-7 focus-visible:ring-orange-500"
+                        value={ligne.prix_unitaire ?? ""}
+                        onChange={(e) => handlePrixChange(index, parseFloat(e.target.value) || 0)}
+                      />
+                      <span className="absolute right-2 top-2.5 text-[10px] font-semibold text-muted-foreground pointer-events-none">
+                        DH
+                      </span>
+                    </div>
                   </TableCell>
-                  <TableCell className="align-top py-5 text-right font-black text-base text-foreground/80 pt-6 pr-6">
-                    {montantHTRow.toLocaleString("fr-FR", { minimumFractionDigits: 2 })}<span className="text-[10px] ml-1 opacity-50">DH</span>
+                  <TableCell className="align-top py-5 pr-6">
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        placeholder="0.00"
+                        className="h-10 font-black text-right pr-7 text-foreground bg-muted/20 focus:bg-background border-muted-foreground/30 focus-visible:ring-orange-500"
+                        value={
+                          typeof ligne.montant_ht === "number" && !isNaN(ligne.montant_ht) && ligne.montant_ht !== 0
+                            ? ligne.montant_ht
+                            : (typeof montantHTRow === "number" && !isNaN(montantHTRow) && montantHTRow !== 0 ? Number(montantHTRow.toFixed(2)) : "")
+                        }
+                        onChange={(e) => handleTotalChange(index, parseFloat(e.target.value) || 0)}
+                      />
+                      <span className="absolute right-2 top-2.5 text-[10px] font-bold text-orange-600 pointer-events-none">
+                        DH
+                      </span>
+                    </div>
                   </TableCell>
                   <TableCell className="align-top py-5 px-6">
                     <Button
@@ -476,7 +510,7 @@ export function DocumentLines({
                       variant="ghost"
                       size="sm"
                       onClick={() => remove(index)}
-                      className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-all"
+                      className="h-10 w-10 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-all cursor-pointer"
                     >
                       <Trash2 className="h-5 w-5" />
                     </Button>
@@ -499,15 +533,30 @@ export function DocumentLines({
         </Table>
       </div>
 
-      <Button 
-        type="button" 
-        variant="outline" 
-        onClick={addLine}
-        className="w-full h-14 border-dashed border-2 bg-muted/5 hover:bg-orange-500/5 hover:border-orange-500 hover:text-orange-600 transition-all font-black uppercase tracking-widest text-xs"
-      >
-        <Plus className="mr-2 h-5 w-5" />
-        Ajouter une ligne d'article
-      </Button>
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={addLine}
+          className="flex-1 h-12 border-dashed border-2 bg-muted/5 hover:bg-orange-500/5 hover:border-orange-500 hover:text-orange-600 transition-all font-black uppercase tracking-wider text-xs cursor-pointer"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Ajouter une ligne d&apos;article
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setPhotoTargetRowIndex(null)
+            setIsPhotoScannerOpen(true)
+          }}
+          className="h-12 px-6 border-dashed border-2 border-orange-500/30 text-orange-600 hover:bg-orange-500/10 font-bold uppercase tracking-wider text-xs gap-2 cursor-pointer"
+        >
+          <Camera className="h-4 w-4" />
+          <span>Scanner par Photo (IA)</span>
+        </Button>
+      </div>
 
       {activeTraceability !== null && (
         <CodesEntryModal
@@ -541,8 +590,6 @@ export function DocumentLines({
                     } else {
                         toast.error("Código no encontrado")
                     }
-                } else {
-                    handleQuickScan(code)
                 }
                 setScanningRowIndex(null)
             }}
@@ -553,6 +600,15 @@ export function DocumentLines({
             title={scanningRowIndex !== null ? "Escanear para esta línea" : "Escaneo de Producto"}
         />
       )}
+
+      <CameraProductScanner
+        isOpen={isPhotoScannerOpen}
+        onClose={() => {
+          setIsPhotoScannerOpen(false)
+          setPhotoTargetRowIndex(null)
+        }}
+        onProductDetected={handlePhotoDetected}
+      />
     </div>
   )
 }
