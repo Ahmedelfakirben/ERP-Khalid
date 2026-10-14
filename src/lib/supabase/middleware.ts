@@ -6,7 +6,7 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  let url = process.env.INTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
+  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
   if (url.startsWith("http://api-khalid.elfakir.com")) {
     url = url.replace("http://", "https://")
   }
@@ -40,7 +40,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Public routes and assets that don't require auth
-  const publicRoutes = ["/login", "/forgot-password", "/manifest.webmanifest", "/manifest.json", "/favicon.ico", "/logo.jpeg"]
+  const publicRoutes = ["/login", "/forgot-password", "/manifest.webmanifest", "/manifest.json", "/favicon.ico", "/logo.jpeg", "/icon-192.png", "/icon-512.png"]
   const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route)
   )

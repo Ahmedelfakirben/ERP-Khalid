@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 
 function getAdminAuthClient() {
-  let supabaseUrl = process.env.INTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
+  let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
   if (supabaseUrl.startsWith("http://api-khalid.elfakir.com")) {
     supabaseUrl = supabaseUrl.replace("http://", "https://")
   }
