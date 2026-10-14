@@ -7,7 +7,7 @@ const DEFAULT_ANON_KEY = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhY
 
 export async function createClient() {
   const cookieStore = await cookies()
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_URL
+  let url = process.env.INTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_URL
   if (url.startsWith("http://api-khalid.elfakir.com")) {
     url = url.replace("http://", "https://")
   }

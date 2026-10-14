@@ -6,7 +6,7 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  let url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
+  let url = process.env.INTERNAL_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://api-khalid.elfakir.com"
   if (url.startsWith("http://api-khalid.elfakir.com")) {
     url = url.replace("http://", "https://")
   }
