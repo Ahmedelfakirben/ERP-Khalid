@@ -61,6 +61,9 @@ import {
   Package,
   Sparkles,
   User,
+  Users,
+  Building2,
+  Wallet,
   ShieldCheck,
   FileSpreadsheet,
   Camera,
@@ -1236,15 +1239,51 @@ export default function PosTerminalPage() {
                 )}
               </div>
 
-              {/* Cart Selectors: Dépôt, Caisse, Client in 1 Single Line */}
-              <div className="px-3 py-2 bg-muted/20 border-b shrink-0">
-                <div className="grid grid-cols-3 gap-1.5 items-center">
-                  <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block mb-0.5 truncate">
+              {/* Cart Selectors: Client, Dépôt & Caisse */}
+              <div className="px-3.5 py-2.5 bg-muted/30 border-b shrink-0 space-y-2">
+                {/* Client selector - Full width with quick reset */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5 text-foreground">
+                      <Users className="h-3 w-3 text-orange-500" />
+                      Client
+                    </span>
+                    {clientId !== "comptoir" && (
+                      <button
+                        type="button"
+                        onClick={() => setClientId("comptoir")}
+                        className="text-[10px] text-orange-500 hover:text-orange-600 font-semibold cursor-pointer underline"
+                      >
+                        Remettre Comptoir
+                      </button>
+                    )}
+                  </div>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger className="h-8 w-full text-xs font-semibold rounded-lg bg-background px-2.5">
+                      <SelectValue placeholder="Sélectionner client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="comptoir" className="text-xs font-semibold">
+                        Comptoir (Vente Directe)
+                      </SelectItem>
+                      {clients?.map((c) => (
+                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                          {c.raison_sociale}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Dépôt & Caisse in 2 equal, clean columns */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 truncate">
+                      <Building2 className="h-3 w-3 text-muted-foreground/70" />
                       Dépôt
                     </span>
                     <Select value={depotId} onValueChange={setDepotId}>
-                      <SelectTrigger className="h-7 text-[11px] font-medium rounded-lg bg-background px-2">
+                      <SelectTrigger className="h-8 w-full text-xs font-medium rounded-lg bg-background px-2">
                         <SelectValue placeholder="Dépôt" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1257,39 +1296,19 @@ export default function PosTerminalPage() {
                     </Select>
                   </div>
 
-                  <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block mb-0.5 truncate">
+                  <div className="space-y-1 min-w-0">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1 truncate">
+                      <Wallet className="h-3 w-3 text-muted-foreground/70" />
                       Caisse
                     </span>
                     <Select value={tresorerieId} onValueChange={setTresorerieId}>
-                      <SelectTrigger className="h-7 text-[11px] font-medium rounded-lg bg-background px-2">
+                      <SelectTrigger className="h-8 w-full text-xs font-medium rounded-lg bg-background px-2">
                         <SelectValue placeholder="Caisse" />
                       </SelectTrigger>
                       <SelectContent>
                         {tresoreries?.map((t) => (
                           <SelectItem key={t.id} value={t.id} className="text-xs">
                             {t.libelle}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-0">
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block mb-0.5 truncate">
-                      Client
-                    </span>
-                    <Select value={clientId} onValueChange={setClientId}>
-                      <SelectTrigger className="h-7 text-[11px] font-medium rounded-lg bg-background px-2 truncate">
-                        <SelectValue placeholder="Client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="comptoir" className="text-xs font-semibold">
-                          Comptoir
-                        </SelectItem>
-                        {clients?.map((c) => (
-                          <SelectItem key={c.id} value={c.id} className="text-xs">
-                            {c.raison_sociale}
                           </SelectItem>
                         ))}
                       </SelectContent>
