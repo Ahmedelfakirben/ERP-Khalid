@@ -1,5 +1,7 @@
 "use client"
 
+import { getCompanySettingsSync } from "@/hooks/use-company-settings"
+
 export interface PosTicketItem {
   designation: string
   quantite: number
@@ -219,8 +221,10 @@ export function printPosTicket(data: PosTicketData) {
       </head>
       <body>
         <div class="header">
-          <h1 class="company-name">${data.companyName || "LINVENTORY"}</h1>
-          <p class="subtitle">${data.companySubtitle || "Point de Vente & Gestion Commerciale"}</p>
+          <h1 class="company-name">${data.companyName || getCompanySettingsSync().nom || "LINVENTORY"}</h1>
+          ${getCompanySettingsSync().adresse ? `<p class="subtitle">${getCompanySettingsSync().adresse}</p>` : `<p class="subtitle">${data.companySubtitle || "Point de Vente & Gestion Commerciale"}</p>`}
+          ${getCompanySettingsSync().telephone ? `<p class="subtitle">Tél: ${getCompanySettingsSync().telephone}</p>` : ""}
+          ${getCompanySettingsSync().ice ? `<p class="subtitle">ICE: ${getCompanySettingsSync().ice}</p>` : ""}
           <p style="margin: 4px 0 0 0; font-size: 10px; font-weight: bold;">TICKET DE CAISSE</p>
         </div>
 
@@ -480,7 +484,7 @@ export function printPosCloture(data: PosClotureData) {
       </head>
       <body>
         <div class="header">
-          <h1 class="company-name">${data.companyName || "LINVENTORY POS"}</h1>
+          <h1 class="company-name">${data.companyName || getCompanySettingsSync().nom || "LINVENTORY POS"}</h1>
           <p class="ticket-title">${data.titre || "TICKET DE CLÔTURE DE CAISSE"}</p>
           <p style="font-size: 9px; color: #555; margin: 2px 0 0 0;">
             Imprimé le ${dateCloture}
@@ -688,8 +692,8 @@ export function printPosRetourTicket(data: PosRetourTicketData) {
       </head>
       <body>
         <div class="header border-bottom py-1">
-          <div class="company-name">${data.companyName || "LINVENTORY"}</div>
-          <div style="font-size: 9px;">${data.companySubtitle || "Point de Vente & Gestion Commerciale"}</div>
+          <div class="company-name">${data.companyName || getCompanySettingsSync().nom || "LINVENTORY"}</div>
+          ${getCompanySettingsSync().adresse ? `<div style="font-size: 9px;">${getCompanySettingsSync().adresse}</div>` : ""}
           <div class="badge-retour">*** TICKET DE RETOUR / AVOIR ***</div>
           <div class="font-bold">N° : ${data.ticketNumero}</div>
           <div style="font-size: 9px;">Date : ${dateFormatted} à ${timeFormatted}</div>

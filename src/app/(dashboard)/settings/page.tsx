@@ -12,14 +12,16 @@ import { Separator } from "@/components/ui/separator"
 import { User, Building, Save, Loader2, ReceiptText, CheckCircle2, Camera } from "lucide-react"
 import { toast } from "sonner"
 import { useFiscalMode } from "@/providers/fiscal-mode-context"
+import { useCompanySettings, DEFAULT_COMPANY_INFO } from "@/hooks/use-company-settings"
 
 export default function SettingsPage() {
     const supabase = createClient()
     const { fiscalMode, toggleFiscalMode } = useFiscalMode()
+    const { company: savedCompany, saveCompany, isSaving: savingCompany } = useCompanySettings()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [profile, setProfile] = useState({ nom: "", prenom: "", email: "", role: "" })
-    const [company, setCompany] = useState({ nom: "ISH Digital ALT", adresse: "Casablanca, Maroc", telephone: "+212 5XX-XXXXXX", email: "contact@ish-digital.ma", ice: "000000000000000" })
+    const [company, setCompany] = useState(DEFAULT_COMPANY_INFO)
 
     useEffect(() => {
         async function loadProfile() {
@@ -45,15 +47,20 @@ export default function SettingsPage() {
         setSaving(false)
     }
 
-    const handleSaveCompany = () => {
-        localStorage.setItem("company_info", JSON.stringify(company))
-        toast.success("Informations société sauvegardées")
-    }
-
     useEffect(() => {
-        const saved = localStorage.getItem("company_info")
-        if (saved) { try { setCompany(JSON.parse(saved)) } catch { } }
-    }, [])
+        if (savedCompany) {
+            setCompany(savedCompany)
+        }
+    }, [savedCompany])
+
+    const handleSaveCompany = async () => {
+        try {
+            await saveCompany(company)
+            toast.success("Informations société sauvegardées avec succès !")
+        } catch {
+            toast.error("Erreur lors de la sauvegarde")
+        }
+    }
 
     const roleLabels: Record<string, string> = { admin: "Administrateur", gerant: "Gérant", commercial: "Commercial", magasinier: "Magasinier" }
 
@@ -86,7 +93,7 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center gap-2"><Building className="h-5 w-5" /><CardTitle>Informations société</CardTitle></div>
-                    <CardDescription>Ces informations apparaissent sur les documents PDF générés</CardDescription>
+                    <CardDescription>Ces informations apparaissent sur les tickets de caisse POS et les documents PDF générés</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
@@ -98,7 +105,10 @@ export default function SettingsPage() {
                         <div><Label>Téléphone</Label><Input value={company.telephone} onChange={(e) => setCompany({ ...company, telephone: e.target.value })} /></div>
                         <div><Label>Email</Label><Input value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} /></div>
                     </div>
-                    <Button onClick={handleSaveCompany}><Save className="mr-2 h-4 w-4" />Sauvegarder les informations société</Button>
+                    <Button onClick={handleSaveCompany} disabled={savingCompany}>
+                        {savingCompany ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Sauvegarder les informations société
+                    </Button>
                 </CardContent>
             </Card>
 

@@ -66,6 +66,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { printPosTicket, printPosCloture } from "@/lib/pos-printer"
+import { useCompanySettings } from "@/hooks/use-company-settings"
 
 const modeLabels: Record<string, string> = {
   especes: "Espèces",
@@ -78,6 +79,7 @@ export default function HistoriquePosPage() {
   const { data: ventes, isLoading } = useVentePosList()
   const deleteVente = useDeleteVentePos()
   const { exportToExcel, isExporting } = useExportToExcel()
+  const { company: companySettings } = useCompanySettings()
 
   const todayStr = new Date().toISOString().split("T")[0]
   const currentMonthStr = todayStr.substring(0, 7) // YYYY-MM
@@ -681,8 +683,11 @@ export default function HistoriquePosPage() {
             <div className="space-y-4 pt-2 font-mono text-xs">
               <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3 font-sans">
-                  <h4 className="font-black text-base">LINVENTORY</h4>
-                  <p className="text-[11px] text-muted-foreground">Ticket : {selectedVente.numero}</p>
+                  <h4 className="font-black text-base tracking-wide uppercase">{companySettings?.nom || "LINVENTORY"}</h4>
+                  {companySettings?.adresse && <p className="text-[10px] text-muted-foreground">{companySettings.adresse}</p>}
+                  {companySettings?.telephone && <p className="text-[10px] text-muted-foreground">Tél: {companySettings.telephone}</p>}
+                  {companySettings?.ice && <p className="text-[10px] text-muted-foreground">ICE: {companySettings.ice}</p>}
+                  <p className="text-[11px] font-bold text-foreground mt-1">Ticket : {selectedVente.numero}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {new Date(selectedVente.date).toLocaleDateString("fr-FR")}
                     {selectedVente.created_at &&
@@ -810,7 +815,7 @@ export default function HistoriquePosPage() {
             {/* Printable Thermal Receipt Style */}
             <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3 print:border-none print:p-0">
               <div className="text-center border-b border-dashed pb-3 font-sans">
-                <h3 className="font-black text-base tracking-tight">LINVENTORY POS</h3>
+                <h3 className="font-black text-base tracking-tight uppercase">{companySettings?.nom || "LINVENTORY"} POS</h3>
                 <p className="text-[11px] font-bold text-muted-foreground uppercase mt-0.5">
                   TICKET DE CLÔTURE / FERMETURE DE COMPTES
                 </p>

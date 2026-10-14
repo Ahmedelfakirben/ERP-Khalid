@@ -73,6 +73,7 @@ import { CameraProductScanner } from "@/components/pos/camera-product-scanner"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { printPosTicket, printPosCloture, printPosRetourTicket } from "@/lib/pos-printer"
+import { useCompanySettings } from "@/hooks/use-company-settings"
 
 interface CartItem extends VentePosLigneFormData {
   code: string
@@ -149,6 +150,8 @@ export default function PosTerminalPage() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [time, setTime] = useState<string>("")
   const [mobileTab, setMobileTab] = useState<"catalog" | "cart">("catalog")
+  const [isMounted, setIsMounted] = useState(false)
+  const { company: companySettings } = useCompanySettings()
 
   // Modal / Receipt States
   const [completedSale, setCompletedSale] = useState<any>(null)
@@ -194,8 +197,9 @@ export default function PosTerminalPage() {
     }
   }, [tresoreries, tresorerieId])
 
-  // Live Clock
+  // Live Clock & Mount Check
   useEffect(() => {
+    setIsMounted(true)
     const update = () => {
       const now = new Date()
       setTime(now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
@@ -872,7 +876,7 @@ export default function PosTerminalPage() {
                 </Badge>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground tabular-nums">
-                {time || "--:--:--"}
+                {isMounted ? (time || "--:--:--") : "--:--:--"}
               </p>
             </div>
           </div>
@@ -919,7 +923,7 @@ export default function PosTerminalPage() {
             <History className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
             <span className="hidden sm:inline">Historique</span>
             <span className="sm:hidden">Hist.</span>
-            {todayVentes.length > 0 && (
+            {isMounted && todayVentes.length > 0 && (
               <span
                 className={cn(
                   "ml-0.5 px-1.5 py-0.2 text-[10px] sm:text-[11px] font-black rounded-full",
@@ -2133,8 +2137,10 @@ export default function PosTerminalPage() {
               {/* Thermal ticket visual preview */}
               <div className="border border-dashed border-border/80 p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3">
-                  <h4 className="font-black text-base font-sans tracking-wide">LINVENTORY</h4>
-                  <p className="text-[11px] text-muted-foreground">Point de Vente & Gestion Commerciale</p>
+                  <h4 className="font-black text-base font-sans tracking-wide uppercase">{companySettings?.nom || "LINVENTORY"}</h4>
+                  {companySettings?.adresse && <p className="text-[10px] text-muted-foreground">{companySettings.adresse}</p>}
+                  {companySettings?.telephone && <p className="text-[10px] text-muted-foreground">Tél: {companySettings.telephone}</p>}
+                  {companySettings?.ice && <p className="text-[10px] text-muted-foreground">ICE: {companySettings.ice}</p>}
                   <p className="text-[11px] font-bold text-foreground mt-1">Ticket : {completedSale.numero}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {new Date(completedSale.date).toLocaleDateString("fr-FR")} à{" "}
@@ -2601,8 +2607,8 @@ export default function PosTerminalPage() {
             <div className="space-y-4 pt-2 font-mono text-xs">
               <div className="border border-dashed border-border/80 p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3">
-                  <h4 className="font-black text-base font-sans tracking-wide">LINVENTORY</h4>
-                  <p className="text-[11px] text-muted-foreground">Point de Vente & Gestion Commerciale</p>
+                  <h4 className="font-black text-base font-sans tracking-wide uppercase">{companySettings?.nom || "LINVENTORY"}</h4>
+                  {companySettings?.adresse && <p className="text-[10px] text-muted-foreground">{companySettings.adresse}</p>}
                   <Badge variant="outline" className="my-1 font-black border-rose-500/40 text-rose-600 bg-rose-500/10">
                     TICKET DE RETOUR / AVOIR
                   </Badge>
@@ -2847,7 +2853,7 @@ export default function PosTerminalPage() {
             {/* Printable Thermal Receipt Style */}
             <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3 print:border-none print:p-0">
               <div className="text-center border-b border-dashed pb-3 font-sans">
-                <h3 className="font-black text-base tracking-tight">LINVENTORY POS</h3>
+                <h3 className="font-black text-base tracking-tight uppercase">{companySettings?.nom || "LINVENTORY"} POS</h3>
                 <p className="text-[11px] font-bold text-muted-foreground uppercase mt-0.5">
                   TICKET DE CLÔTURE / FERMETURE DE SESSION
                 </p>
