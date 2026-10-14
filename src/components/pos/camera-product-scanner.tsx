@@ -392,33 +392,56 @@ export function CameraProductScanner({
                   </div>
                 ) : result ? (
                   <>
-                    {/* Top Match */}
+                    {/* Top Match with Catalog Photo Visual Comparison */}
                     {result.matched && result.match ? (
-                      <div className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/20 space-y-3 shadow-xs">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3">
-                            <div className="h-11 w-11 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0">
-                              <CheckCircle2 className="h-6 w-6" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-sm sm:text-base text-foreground">
-                                  {result.match.designation}
-                                </span>
-                                <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/15">
-                                  {result.confidence}% similitude
-                                </Badge>
+                      <div className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/20 space-y-3.5 shadow-sm">
+                        <div className="flex items-start gap-3.5">
+                          {/* Catalog Photo of Matched Article */}
+                          <div className="relative h-18 w-18 sm:h-20 sm:w-20 rounded-2xl overflow-hidden border-2 border-emerald-500/60 shadow-md bg-white dark:bg-slate-900 shrink-0 flex items-center justify-center">
+                            {result.match.image_url ? (
+                              <img
+                                src={result.match.image_url}
+                                alt={result.match.designation}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center text-emerald-600 dark:text-emerald-400 p-2 text-center">
+                                <Package className="h-7 w-7 opacity-75" />
+                                <span className="text-[8px] font-semibold text-muted-foreground mt-0.5 leading-tight">Sans photo</span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Réf: <span className="font-mono text-foreground font-semibold">{result.match.code}</span> • Prix : <strong className="text-foreground text-sm font-black">{Number(result.match.prix_vente).toFixed(2)} MAD</strong>
-                              </p>
+                            )}
+                            <div className="absolute top-1 right-1 bg-emerald-600 text-white rounded-full p-0.5 shadow-xs">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
                             </div>
+                            <div className="absolute bottom-0 inset-x-0 bg-black/65 text-white text-[8px] font-bold text-center py-0.5 tracking-wider uppercase">
+                              Catalogue
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-sm sm:text-base text-foreground leading-snug">
+                                {result.match.designation}
+                              </span>
+                              <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/60 text-emerald-600 dark:text-emerald-400 bg-emerald-500/15">
+                                {result.confidence}% similitude
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Réf: <span className="font-mono text-foreground font-semibold">{result.match.code}</span>
+                              {result.match.code_barre && (
+                                <span> • CB: <span className="font-mono">{result.match.code_barre}</span></span>
+                              )}
+                            </p>
+                            <p className="text-sm font-black text-foreground mt-0.5">
+                              Prix : <span className="text-emerald-600 dark:text-emerald-400 text-base">{Number(result.match.prix_vente).toFixed(2)} MAD</span>
+                            </p>
                           </div>
                         </div>
 
                         {result.reasoning && (
                           <p className="text-[11px] text-muted-foreground bg-background/80 p-2.5 rounded-xl border border-border/40 leading-relaxed">
-                            💡 <span className="font-semibold text-foreground">Résultat :</span> {result.reasoning}
+                            💡 <span className="font-semibold text-foreground">Validation visuelle :</span> {result.reasoning}
                           </p>
                         )}
 
