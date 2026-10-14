@@ -70,35 +70,59 @@ export function useCreateVentePos() {
                 }
             }
 
-            let numero = null
-            try {
-                const { data: nextNum } = await (supabase.rpc as any)("next_numero", { p_type: "vente_pos" })
-                numero = nextNum
-            } catch (rpcErr) {
-                console.warn("RPC next_numero error:", rpcErr)
+            let vente = null
+            let lastError = null
+
+            for (let attempt = 0; attempt < 3; attempt++) {
+                let numero = null
+                try {
+                    const { data: nextNum } = await (supabase.rpc as any)("next_numero", { p_type: "vente_pos" })
+                    numero = nextNum
+                } catch (rpcErr) {
+                    console.warn("RPC next_numero error:", rpcErr)
+                }
+
+                // If rpc didn't return a number or on retry
+                if (!numero || attempt > 0) {
+                    numero = `POS-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`
+                }
+
+                const { data: insertedVente, error } = await (supabase
+                    .from("ventes_pos") as any)
+                    .insert({
+                        numero,
+                        date: new Date().toISOString().split("T")[0],
+                        client_id: formData.client_id || null,
+                        commercial_id: finalCommercialId, 
+                        tresorerie_id: formData.tresorerie_id,
+                        depot_id: formData.depot_id,
+                        montant_ht, 
+                        montant_tva, 
+                        montant_ttc,
+                        remise: formData.remise || 0,
+                        mode_paiement: formData.mode_paiement,
+                        inclure_tva: Boolean(formData.inclure_tva),
+                    })
+                    .select()
+                    .single()
+
+                if (!error && insertedVente) {
+                    vente = insertedVente
+                    break
+                }
+
+                lastError = error
+                if (error?.code === "23505" || error?.message?.includes("ventes_pos_numero_key")) {
+                    console.warn(`Numero collision on ${numero}, retrying attempt ${attempt + 1}...`)
+                    continue
+                } else {
+                    break
+                }
             }
 
-            const { data: vente, error } = await (supabase
-                .from("ventes_pos") as any)
-                .insert({
-                    numero: numero || `POS-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
-                    date: new Date().toISOString().split("T")[0],
-                    client_id: formData.client_id || null,
-                    commercial_id: finalCommercialId, 
-                    tresorerie_id: formData.tresorerie_id,
-                    depot_id: formData.depot_id,
-                    montant_ht, 
-                    montant_tva, 
-                    montant_ttc,
-                    remise: formData.remise || 0,
-                    mode_paiement: formData.mode_paiement,
-                    inclure_tva: Boolean(formData.inclure_tva),
-                })
-                .select()
-                .single()
-            if (error) {
-                console.error("ventes_pos insert error:", error)
-                throw new Error(error.message || "Erreur lors de l'enregistrement de la vente")
+            if (!vente) {
+                console.error("ventes_pos insert error:", lastError)
+                throw new Error(lastError?.message || "Erreur lors de l'enregistrement de la vente")
             }
 
             const lignesData = lignes.map((l) => ({
@@ -223,7 +247,7 @@ export function useSoldArticlesPos() {
             const { data, error } = await supabase
                 .from("vente_pos_lignes")
                 .select("article_id, designation, quantite, prix_unitaire, vente:ventes_pos(id, numero, date), article:articles(id, code, designation, code_barre, image_url, prix_vente)")
-                .order("created_at", { ascending: false })
+                .order("id", { ascending: false })
             if (error) throw error
 
             const map = new Map<string, SoldArticleSummary>()
