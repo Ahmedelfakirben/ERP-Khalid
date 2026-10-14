@@ -681,7 +681,7 @@ export default function HistoriquePosPage() {
             <div className="space-y-4 pt-2 font-mono text-xs">
               <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3 font-sans">
-                  <h4 className="font-black text-base">DIGITAL ALT</h4>
+                  <h4 className="font-black text-base">LINVENTORY</h4>
                   <p className="text-[11px] text-muted-foreground">Ticket : {selectedVente.numero}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {new Date(selectedVente.date).toLocaleDateString("fr-FR")}
@@ -810,7 +810,7 @@ export default function HistoriquePosPage() {
             {/* Printable Thermal Receipt Style */}
             <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3 print:border-none print:p-0">
               <div className="text-center border-b border-dashed pb-3 font-sans">
-                <h3 className="font-black text-base tracking-tight">DIGITAL ALT POS</h3>
+                <h3 className="font-black text-base tracking-tight">LINVENTORY POS</h3>
                 <p className="text-[11px] font-bold text-muted-foreground uppercase mt-0.5">
                   TICKET DE CLÔTURE / FERMETURE DE COMPTES
                 </p>

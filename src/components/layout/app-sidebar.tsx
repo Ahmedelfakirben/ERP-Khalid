@@ -165,14 +165,15 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
-          <div className="h-10 w-10 shrink-0 flex items-center justify-center rounded-lg bg-orange-600 dark:bg-orange-500 shadow-lg shadow-orange-500/20">
-            <span className="text-white font-black text-xl">A</span>
+          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl shadow-md ring-1 ring-orange-500/30 bg-slate-950">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.jpeg" alt="Linventory" className="h-full w-full object-cover" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-accent leading-tight">
-              Digital ALT
+            <h1 className="text-lg font-black text-orange-500 tracking-tight leading-tight">
+              Linventory
             </h1>
-            <p className="text-xs text-muted-foreground">Gestion Commerciale</p>
+            <p className="text-xs text-muted-foreground">ERP & Gestion Commerciale</p>
           </div>
         </Link>
       </SidebarHeader>

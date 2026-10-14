@@ -60,12 +60,12 @@ function LoginForm() {
     <Card className="w-full max-w-md shadow-2xl border-orange-500/20">
       <CardHeader className="text-center">
         <div className="mx-auto mb-6 flex flex-col items-center gap-4">
-          <div className="h-40 w-40 overflow-hidden rounded-xl shadow-lg ring-4 ring-orange-500/30">
+          <div className="h-40 w-40 overflow-hidden rounded-2xl shadow-xl ring-4 ring-orange-500/30 bg-slate-950">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.jpeg" alt="Logo" className="h-full w-full object-cover" />
+            <img src="/logo.jpeg" alt="Linventory Logo" className="h-full w-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold text-orange-500">
-            Digital ALT
+          <h1 className="text-3xl font-black text-orange-500 tracking-tight">
+            Linventory
           </h1>
           {isPosRedirect && (
             <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs border-orange-500/40 text-orange-400 bg-orange-500/10 font-bold">

@@ -2,8 +2,8 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Point de Vente (POS) - Digital ALT",
-  description: "Terminal Point de Vente spécialisé Digital ALT",
+  title: "Point de Vente (POS) - Linventory",
+  description: "Terminal Point de Vente spécialisé Linventory",
 }
 
 export default function PosLayout({

@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Digital ALT - ERP",
-  description: "Système de gestion commerciale Digital ALT",
+  title: "Linventory - ERP & Gestion Commerciale",
+  description: "Système de gestion commerciale, stocks et point de vente Linventory",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Digital ALT",
+    title: "Linventory",
   },
   icons: {
     icon: "/logo.jpeg",

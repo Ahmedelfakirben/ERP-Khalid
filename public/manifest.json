@@ -1,7 +1,7 @@
 {
-  "name": "Digital ALT ERP",
-  "short_name": "Digital ALT",
-  "description": "Système de gestion commerciale Digital ALT",
+  "name": "Linventory ERP",
+  "short_name": "Linventory",
+  "description": "Système de gestion commerciale & inventaire Linventory",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

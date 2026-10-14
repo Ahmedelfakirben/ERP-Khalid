@@ -219,7 +219,7 @@ export function printPosTicket(data: PosTicketData) {
       </head>
       <body>
         <div class="header">
-          <h1 class="company-name">${data.companyName || "DIGITAL ALT"}</h1>
+          <h1 class="company-name">${data.companyName || "LINVENTORY"}</h1>
           <p class="subtitle">${data.companySubtitle || "Point de Vente & Gestion Commerciale"}</p>
           <p style="margin: 4px 0 0 0; font-size: 10px; font-weight: bold;">TICKET DE CAISSE</p>
         </div>
@@ -480,7 +480,7 @@ export function printPosCloture(data: PosClotureData) {
       </head>
       <body>
         <div class="header">
-          <h1 class="company-name">${data.companyName || "DIGITAL ALT POS"}</h1>
+          <h1 class="company-name">${data.companyName || "LINVENTORY POS"}</h1>
           <p class="ticket-title">${data.titre || "TICKET DE CLÔTURE DE CAISSE"}</p>
           <p style="font-size: 9px; color: #555; margin: 2px 0 0 0;">
             Imprimé le ${dateCloture}
@@ -688,7 +688,7 @@ export function printPosRetourTicket(data: PosRetourTicketData) {
       </head>
       <body>
         <div class="header border-bottom py-1">
-          <div class="company-name">${data.companyName || "DIGITAL ALT"}</div>
+          <div class="company-name">${data.companyName || "LINVENTORY"}</div>
           <div style="font-size: 9px;">${data.companySubtitle || "Point de Vente & Gestion Commerciale"}</div>
           <div class="badge-retour">*** TICKET DE RETOUR / AVOIR ***</div>
           <div class="font-bold">N° : ${data.ticketNumero}</div>

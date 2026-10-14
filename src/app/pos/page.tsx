@@ -858,14 +858,15 @@ export default function PosTerminalPage() {
           <div
             onClick={() => handleTabChange("pos")}
             className="flex items-center gap-2 select-none cursor-pointer"
-            title="Digital ALT POS"
+            title="Linventory POS"
           >
-            <div className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white font-black text-base sm:text-xl shadow-md shadow-orange-500/20">
-              P
+            <div className="h-8 w-8 sm:h-10 sm:w-10 overflow-hidden rounded-xl shadow-md ring-1 ring-orange-500/30 bg-slate-950 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.jpeg" alt="Linventory" className="h-full w-full object-cover" />
             </div>
             <div className="hidden lg:block">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-foreground">Digital ALT</span>
+                <span className="font-black text-base tracking-tight text-foreground">Linventory</span>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-bold border-orange-500/30 text-orange-600 dark:text-orange-400 bg-orange-500/10">
                   POS
                 </Badge>
@@ -2132,7 +2133,7 @@ export default function PosTerminalPage() {
               {/* Thermal ticket visual preview */}
               <div className="border border-dashed border-border/80 p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3">
-                  <h4 className="font-black text-base font-sans tracking-wide">DIGITAL ALT</h4>
+                  <h4 className="font-black text-base font-sans tracking-wide">LINVENTORY</h4>
                   <p className="text-[11px] text-muted-foreground">Point de Vente & Gestion Commerciale</p>
                   <p className="text-[11px] font-bold text-foreground mt-1">Ticket : {completedSale.numero}</p>
                   <p className="text-[10px] text-muted-foreground">
@@ -2600,7 +2601,7 @@ export default function PosTerminalPage() {
             <div className="space-y-4 pt-2 font-mono text-xs">
               <div className="border border-dashed border-border/80 p-4 rounded-2xl bg-muted/20 space-y-3">
                 <div className="text-center border-b border-dashed pb-3">
-                  <h4 className="font-black text-base font-sans tracking-wide">DIGITAL ALT</h4>
+                  <h4 className="font-black text-base font-sans tracking-wide">LINVENTORY</h4>
                   <p className="text-[11px] text-muted-foreground">Point de Vente & Gestion Commerciale</p>
                   <Badge variant="outline" className="my-1 font-black border-rose-500/40 text-rose-600 bg-rose-500/10">
                     TICKET DE RETOUR / AVOIR
@@ -2846,7 +2847,7 @@ export default function PosTerminalPage() {
             {/* Printable Thermal Receipt Style */}
             <div className="border border-dashed p-4 rounded-2xl bg-muted/20 space-y-3 print:border-none print:p-0">
               <div className="text-center border-b border-dashed pb-3 font-sans">
-                <h3 className="font-black text-base tracking-tight">DIGITAL ALT POS</h3>
+                <h3 className="font-black text-base tracking-tight">LINVENTORY POS</h3>
                 <p className="text-[11px] font-bold text-muted-foreground uppercase mt-0.5">
                   TICKET DE CLÔTURE / FERMETURE DE SESSION
                 </p>

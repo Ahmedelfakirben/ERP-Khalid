@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Digital ALT ERP',
-    short_name: 'DigitalALT',
-    description: 'Sistema de Gestión Comercial Premium',
+    name: 'Linventory ERP',
+    short_name: 'Linventory',
+    description: 'Système de gestion commerciale & inventaire Linventory',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
