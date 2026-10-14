@@ -77,6 +77,7 @@ import { printPosTicket, printPosCloture, printPosRetourTicket } from "@/lib/pos
 interface CartItem extends VentePosLigneFormData {
   code: string
   image_url?: string | null
+  prix_initial?: number
 }
 
 const modeLabels: Record<string, string> = {
@@ -257,12 +258,29 @@ export default function PosTerminalPage() {
           designation: article.designation,
           quantite: 1,
           prix_unitaire: Number(article.prix_vente),
+          prix_initial: Number(article.prix_vente),
           tva: article.tva || 0,
           montant_ht: Number(article.prix_vente),
           image_url: article.image_url,
         },
       ]
     })
+  }
+
+  const updateUnitPrice = (article_id: string, newPrice: number) => {
+    const validPrice = Math.max(0, isNaN(newPrice) ? 0 : newPrice)
+    setCart((prev) =>
+      prev.map((c) => {
+        if (c.article_id !== article_id) return c
+        return {
+          ...c,
+          prix_unitaire: validPrice,
+          montant_ht: Math.round(c.quantite * validPrice * 100) / 100,
+        }
+      })
+    )
+    setCustomFinalPrice("")
+    setRemiseValue("")
   }
 
   const updateQty = (article_id: string, delta: number) => {
@@ -414,7 +432,7 @@ export default function PosTerminalPage() {
           montant_ht: finalAmount,
           montant_ttc: finalAmount,
           remise: remiseVal,
-          lignes: proratedLines.map(({ code, image_url, ...l }) => l),
+          lignes: proratedLines.map(({ code, image_url, prix_initial, ...l }) => l),
         },
         commercial_id: profile?.id || "",
       })
@@ -1293,9 +1311,21 @@ export default function PosTerminalPage() {
                         <p className="font-bold text-xs truncate" title={item.designation}>
                           {item.designation}
                         </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {item.prix_unitaire.toFixed(2)} MAD × {item.quantite}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-1 bg-muted/60 hover:bg-muted px-1.5 py-0.5 rounded-md border border-border/60 transition-colors">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={item.prix_unitaire}
+                              onChange={(e) => updateUnitPrice(item.article_id, parseFloat(e.target.value))}
+                              className="w-16 text-right font-black text-xs bg-transparent border-none focus:outline-none p-0 text-foreground"
+                              title="Cliquer pour modifier le prix unitaire"
+                            />
+                            <span className="text-[10px] font-bold text-muted-foreground">MAD</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground font-medium">× {item.quantite}</span>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
@@ -1859,7 +1889,7 @@ export default function PosTerminalPage() {
       {/* 2.5 MODAL DE PAIEMENT & ENCAISSEMENT */}
       {/* ========================================================================= */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="max-w-md sm:max-w-lg p-4 sm:p-6 rounded-3xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-lg sm:max-w-xl p-4 sm:p-6 rounded-3xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-black flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-primary" />
@@ -1931,6 +1961,82 @@ export default function PosTerminalPage() {
                     <span className="text-[11px] leading-tight font-extrabold">{mode.label}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Articles du Panier & Modification Prix par Article */}
+            <div className="space-y-2.5 p-3.5 rounded-2xl bg-card border border-border/70">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <ShoppingBag className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Articles & Prix Unitaire (Modifiable)
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-muted-foreground">
+                  {cart.length} ligne(s)
+                </span>
+              </div>
+
+              <div className="divide-y divide-border/50 max-h-48 overflow-y-auto pr-1 space-y-1">
+                {cart.map((item) => {
+                  const isModified = item.prix_initial !== undefined && Math.abs(item.prix_unitaire - item.prix_initial) > 0.001
+                  return (
+                    <div
+                      key={item.article_id}
+                      className="pt-2 pb-1.5 flex items-center justify-between gap-2.5 text-xs"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs truncate text-foreground" title={item.designation}>
+                            {item.designation}
+                          </p>
+                          <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-bold shrink-0">
+                            ×{item.quantite}
+                          </Badge>
+                        </div>
+                        {isModified && item.prix_initial !== undefined && (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-muted-foreground line-through">
+                              Base: {item.prix_initial.toFixed(2)} MAD
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateUnitPrice(item.article_id, item.prix_initial!)}
+                              className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                              title="Rétablir le prix initial du catalogue"
+                            >
+                              <RotateCcw className="h-2.5 w-2.5" />
+                              Rétablir
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground font-semibold">P.U:</span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.prix_unitaire}
+                            onChange={(e) => updateUnitPrice(item.article_id, parseFloat(e.target.value))}
+                            className={cn(
+                              "h-8 w-24 text-right text-xs font-black rounded-lg px-2",
+                              isModified && "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold"
+                            )}
+                          />
+                          <span className="text-[10px] font-bold text-muted-foreground">MAD</span>
+                        </div>
+
+                        <div className="w-16 text-right font-black text-xs text-foreground shrink-0">
+                          {(item.prix_unitaire * item.quantite).toFixed(2)} <span className="text-[9px] text-muted-foreground font-normal">MAD</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
