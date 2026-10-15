@@ -1912,49 +1912,60 @@ export default function PosTerminalPage() {
       {/* ========================================================================= */}
       {/* 2.5 MODAL DE PAIEMENT & ENCAISSEMENT */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 2.5 MODAL DE PAIEMENT & ENCAISSEMENT */}
+      {/* ========================================================================= */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="max-w-lg sm:max-w-xl p-4 sm:p-6 rounded-3xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
+        <DialogContent
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className="w-[96vw] max-w-[96vw] sm:max-w-xl md:max-w-2xl p-4 sm:p-6 rounded-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden flex flex-col gap-4"
+        >
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-lg sm:text-xl font-black flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary shrink-0" />
               <span>Paiement & Encaissement</span>
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-xs text-muted-foreground">
               Sélectionnez le mode de règlement et confirmez la vente
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 pt-1">
+          <div className="space-y-3.5 sm:space-y-4 pt-1">
             {/* Grand Total Highlight Card */}
-            <div className="rounded-2xl p-4 bg-muted/40 border text-center space-y-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="rounded-2xl p-3.5 sm:p-5 bg-muted/40 border border-border/80 text-center space-y-1.5 shadow-xs">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                 Montant Total à Payer
               </span>
-              <div className="text-4xl sm:text-5xl font-black text-primary tracking-tight">
+              <div className="text-3xl sm:text-4xl md:text-5xl font-black text-primary tracking-tight">
                 {effectiveRemise > 0 ? (
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="line-through text-muted-foreground text-lg sm:text-xl font-semibold">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
+                      <span className="line-through text-muted-foreground text-sm sm:text-lg font-semibold">
                         {totalTTC.toFixed(2)} MAD
                       </span>
-                      <span className="text-amber-600 dark:text-amber-400 text-xs font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      <span className="text-amber-600 dark:text-amber-400 text-[11px] sm:text-xs font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                         -{effectiveRemise.toFixed(2)} MAD ({Math.round((effectiveRemise / totalTTC) * 100)}%)
                       </span>
                     </div>
                     <div>
-                      {effectiveFinalPrice.toFixed(2)} <span className="text-xl font-bold text-muted-foreground">MAD</span>
+                      {effectiveFinalPrice.toFixed(2)}{" "}
+                      <span className="text-lg sm:text-2xl font-bold text-muted-foreground">MAD</span>
                     </div>
                   </div>
                 ) : (
                   <div>
-                    {totalTTC.toFixed(2)} <span className="text-xl font-bold text-muted-foreground">MAD</span>
+                    {totalTTC.toFixed(2)}{" "}
+                    <span className="text-lg sm:text-2xl font-bold text-muted-foreground">MAD</span>
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-1 flex-wrap">
-                <span>Client : <strong className="text-foreground">{clientId === "comptoir" ? "Comptoir" : clients?.find((c) => c.id === clientId)?.raison_sociale || "Client"}</strong></span>
-                <span>•</span>
-                <span>Caisse : <strong className="text-foreground">{tresoreries?.find((t) => t.id === tresorerieId)?.libelle || "Caisse"}</strong></span>
+              <div className="flex items-center justify-center gap-2 text-[11px] sm:text-xs text-muted-foreground pt-1 flex-wrap">
+                <span className="bg-background/80 px-2.5 py-0.5 rounded-full border border-border/60">
+                  Client : <strong className="text-foreground">{clientId === "comptoir" ? "Comptoir" : clients?.find((c) => c.id === clientId)?.raison_sociale || "Client"}</strong>
+                </span>
+                <span className="bg-background/80 px-2.5 py-0.5 rounded-full border border-border/60">
+                  Caisse : <strong className="text-foreground">{tresoreries?.find((t) => t.id === tresorerieId)?.libelle || "Caisse"}</strong>
+                </span>
               </div>
             </div>
 
@@ -1975,29 +1986,29 @@ export default function PosTerminalPage() {
                     type="button"
                     onClick={() => setModePaiement(mode.id as any)}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer select-none",
+                      "flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl text-xs font-bold border transition-all cursor-pointer select-none min-h-[60px] sm:min-h-[70px]",
                       modePaiement === mode.id
                         ? "bg-primary text-primary-foreground border-primary shadow-md scale-[1.02]"
                         : "bg-card border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
-                    <mode.icon className="h-5 w-5 mb-1.5" />
-                    <span className="text-[11px] leading-tight font-extrabold">{mode.label}</span>
+                    <mode.icon className="h-5 w-5 mb-1 shrink-0" />
+                    <span className="text-[11px] leading-tight font-extrabold text-center">{mode.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Articles du Panier & Modification Prix par Article */}
-            <div className="space-y-2.5 p-3.5 rounded-2xl bg-card border border-border/70">
+            <div className="space-y-2.5 p-3 sm:p-4 rounded-2xl bg-card border border-border/70">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <ShoppingBag className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <ShoppingBag className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate">
                     Articles & Prix Unitaire (Modifiable)
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-muted-foreground">
+                <span className="text-[11px] font-bold text-muted-foreground shrink-0 ml-2">
                   {cart.length} ligne(s)
                 </span>
               </div>
@@ -2008,8 +2019,9 @@ export default function PosTerminalPage() {
                   return (
                     <div
                       key={item.article_id}
-                      className="pt-2 pb-1.5 flex items-center justify-between gap-2.5 text-xs"
+                      className="pt-2 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 text-xs"
                     >
+                      {/* Titre & Quantité */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="font-bold text-xs truncate text-foreground" title={item.designation}>
@@ -2037,7 +2049,8 @@ export default function PosTerminalPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      {/* Inputs Prix Unitaire & Total Ligne */}
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-0.5 sm:pt-0">
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] text-muted-foreground font-semibold">P.U:</span>
                           <Input
@@ -2047,15 +2060,16 @@ export default function PosTerminalPage() {
                             value={item.prix_unitaire}
                             onChange={(e) => updateUnitPrice(item.article_id, parseFloat(e.target.value))}
                             className={cn(
-                              "h-8 w-24 text-right text-xs font-black rounded-lg px-2",
+                              "h-7 sm:h-8 w-20 sm:w-24 text-right text-xs font-black rounded-lg px-2",
                               isModified && "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-extrabold"
                             )}
                           />
                           <span className="text-[10px] font-bold text-muted-foreground">MAD</span>
                         </div>
 
-                        <div className="w-16 text-right font-black text-xs text-foreground shrink-0">
-                          {(item.prix_unitaire * item.quantite).toFixed(2)} <span className="text-[9px] text-muted-foreground font-normal">MAD</span>
+                        <div className="w-20 text-right font-black text-xs text-foreground shrink-0">
+                          {(item.prix_unitaire * item.quantite).toFixed(2)}{" "}
+                          <span className="text-[9px] text-muted-foreground font-normal">MAD</span>
                         </div>
                       </div>
                     </div>
@@ -2065,15 +2079,47 @@ export default function PosTerminalPage() {
             </div>
 
             {/* Réduction / Prix Négocié */}
-            <div className="space-y-3 p-3.5 rounded-2xl bg-card border border-border/70">
-              <div className="flex items-center gap-1.5">
-                <Tag className="h-3.5 w-3.5 text-amber-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Réduction / Prix Négocié
-                </span>
+            <div className="space-y-3 p-3 sm:p-4 rounded-2xl bg-card border border-border/70">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Réduction / Prix Négocié
+                  </span>
+                </div>
+                {/* Boutons rapides pour mobile & PC */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[5, 10, 20].map((pct) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => applyQuickDiscountPercent(pct)}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/60 transition-colors cursor-pointer"
+                    >
+                      -{pct}%
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={applyRoundDiscount}
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border/60 transition-colors cursor-pointer"
+                    title="Arrondir à la dizaine inférieure"
+                  >
+                    Arrondi
+                  </button>
+                  {(customFinalPrice || remiseValue) && (
+                    <button
+                      type="button"
+                      onClick={() => applyQuickDiscountPercent(0)}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
                     Prix Final (MAD)
@@ -2087,7 +2133,7 @@ export default function PosTerminalPage() {
                     onChange={(e) => handleFinalPriceChange(e.target.value)}
                     className="h-10 text-base font-black rounded-xl"
                   />
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground block mt-1">
                     Initial : {totalTTC.toFixed(2)} MAD
                   </span>
                 </div>
@@ -2107,7 +2153,7 @@ export default function PosTerminalPage() {
                       effectiveRemise > 0 && "text-amber-600 dark:text-amber-400 font-black border-amber-500/40 bg-amber-500/5"
                     )}
                   />
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground block mt-1">
                     {effectiveRemise > 0 ? `Économie de ${effectiveRemise.toFixed(2)} MAD` : "Aucune réduction"}
                   </span>
                 </div>
@@ -2115,12 +2161,12 @@ export default function PosTerminalPage() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2.5 pt-2">
               <Button
                 variant="outline"
                 type="button"
                 onClick={() => setPaymentModalOpen(false)}
-                className="flex-1 h-11 rounded-xl text-xs font-bold cursor-pointer"
+                className="flex-1 sm:flex-none sm:w-28 h-11 sm:h-12 rounded-xl text-xs sm:text-sm font-bold cursor-pointer"
               >
                 Retour
               </Button>
@@ -2129,10 +2175,12 @@ export default function PosTerminalPage() {
                 size="lg"
                 disabled={createVente.isPending || effectiveFinalPrice < 0}
                 onClick={handleFinalize}
-                className="flex-[2] h-11 rounded-xl text-sm font-extrabold gap-2 shadow-lg shadow-primary/25 cursor-pointer"
+                className="flex-[2] sm:flex-1 h-11 sm:h-12 rounded-xl text-xs sm:text-sm font-extrabold gap-2 shadow-lg shadow-primary/25 cursor-pointer px-3 sm:px-6"
               >
-                <CheckCircle2 className="h-5 w-5" />
-                <span>{createVente.isPending ? "Enregistrement..." : "Confirmer l'Encaissement"}</span>
+                <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span className="truncate">
+                  {createVente.isPending ? "Enregistrement..." : "Confirmer l'Encaissement"}
+                </span>
               </Button>
             </div>
           </div>
